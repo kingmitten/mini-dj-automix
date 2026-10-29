@@ -86,8 +86,8 @@ Automix-Studio/
 ### 2. Install Python DSP Backend
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/automix-studio.git
-cd automix-studio
+git clone [https://github.com/your-username/automix-studio.git](https://github.com/kingmitten/mini-dj-automix)
+cd mini-dj-automix
 
 # Install dependencies
 pip install fastapi uvicorn numpy scipy python-multipart
