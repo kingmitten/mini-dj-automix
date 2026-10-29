@@ -18,8 +18,8 @@
 
 ##  Key Features
 
-### 1. 🤖 Automated 5-Stage Decision Pipeline (`✨ Auto`)
-When you click **`✨ Auto`**, the engine executes an intelligent decision tree:
+### 1. Automated 5-Stage Decision Pipeline ( Auto`)
+When you click **`Auto`**, the engine executes an intelligent decision tree:
 - **Stage 1 (Profile Ingestion):** Gathers downbeats, Camelot harmonic key, sub-bass density (< 250 Hz), and real-time Voice Activity Detection (VAD) heatmaps.
 - **Stage 2 (Multi-Bar Candidate Seam Search):** Tests **4 Bars**, **8 Bars**, and **16 Bars** simultaneously, scanning candidate downbeats in Song A's outro (last 75s) and Song B's intro (first 45s).
 - **Stage 3 (Vocal Collision Avoidance):** Samples joint vocal probability ($\sum VAD_A \times VAD_B$). If a 16-bar mix causes two vocalists to sing over each other, it dynamically drops to an 8-bar or 4-bar seam where vocal clash is **0.00%**.
