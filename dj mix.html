@@ -1,0 +1,4419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJ Mix Studio</title>
+<style>
+  :root {
+    --bg:         #121110;
+    --panel:      #1a1815;
+    --panel-2:    #221f1a;
+    --line:       #343029;
+    --ink:        #ede6da;
+    --ink-dim:    #9c937f;
+    --ink-faint:  #675f50;
+    --accent:     #ffb74d;
+    --hi:         #5aa7e8;  /* highs = blue   */
+    --mid:        #e88d3c;  /* mids  = orange */
+    --lo:         #ede6da;  /* lows  = white  */
+    --lane-vol:   #5cb3ff;
+    --lane-eq:    #ffca28;  /* EQ = Yellow line */
+    --lane-fil:   #ff5c93;  /* Filter = Pink line */
+    --radius:     6px;
+    font-size: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 16px 20px 24px;
+    min-width: 960px;
+    user-select: none;
+  }
+
+  /* Header */
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .masthead h1 {
+    font-family: "Arial Narrow", "Segoe UI", sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .masthead .sub {
+    color: var(--ink-dim);
+    font-size: 12px;
+    letter-spacing: .04em;
+  }
+  .masthead .hint {
+    margin-left: auto;
+    color: var(--ink-faint);
+    font-size: 11px;
+    font-family: Consolas, monospace;
+  }
+
+  /* Main stack */
+  .studio-stack {
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  /* Deck header info */
+  .deck-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--line);
+    cursor: default;
+  }
+  .deck-header.deck-bottom {
+    border-bottom: none;
+    border-top: 1px solid var(--line);
+  }
+  .deck-badge {
+    font-family: "Arial Narrow", sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+    width: 22px;
+    text-align: center;
+  }
+
+  .deck-btn {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .deck-btn:hover { color: var(--ink); border-color: var(--ink-dim); }
+  .deck-btn.playing {
+    background: var(--accent);
+    color: #121110;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .deck-btn.snap-free {
+    border-color: #64b5f6;
+    color: #64b5f6;
+    background: rgba(100, 181, 246, 0.12);
+  }
+  .deck-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--line);
+  }
+
+  .deck-title {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 36ch;
+    margin-left: 4px;
+  }
+  .deck-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+  }
+  .deck-meta .field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .deck-meta label {
+    color: var(--ink-dim);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .deck-meta .val-static {
+    color: var(--ink);
+    min-width: 44px;
+    text-align: right;
+  }
+  .deck-meta input {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--ink);
+    font: inherit;
+    padding: 2px 6px;
+    text-align: right;
+    width: 60px;
+  }
+  .deck-meta input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .deck-meta .key-input {
+    width: 76px;
+    text-transform: capitalize;
+  }
+
+  /* Canvas wrappers */
+  .canvas-wrap {
+    position: relative;
+    width: 100%;
+    background: var(--panel);
+  }
+  canvas.wave-overview {
+    display: block;
+    width: 100%;
+    height: 72px;
+    cursor: ew-resize;
+    background: #141210;
+  }
+  canvas.wave-detail {
+    display: block;
+    width: 100%;
+    height: 140px;
+    cursor: crosshair;
+    background: #181613;
+  }
+
+  .canvas-empty-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    background: rgba(20, 18, 16, 0.7);
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .canvas-empty-hint:hover {
+    background: rgba(30, 27, 24, 0.85);
+    color: var(--ink);
+  }
+  .canvas-empty-hint span.sub {
+    color: var(--ink-faint);
+    font-size: 11px;
+    text-transform: none;
+  }
+
+  /* Center seam between the two zoomed selected waveforms */
+  .center-seam {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 28px;
+    background: #141210;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    z-index: 5;
+  }
+  .center-seam .seam-status {
+    font-family: Consolas, monospace;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 3px 10px;
+    border-radius: 4px;
+    letter-spacing: .08em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .seam-status.badge-locked {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.5);
+    box-shadow: 0 0 8px rgba(46, 204, 113, 0.2);
+  }
+  .seam-status.badge-drift {
+    background: rgba(232, 141, 60, 0.15);
+    color: #e88d3c;
+    border: 1px solid rgba(232, 141, 60, 0.5);
+  }
+  .pulse-glow {
+    background: rgba(46, 204, 113, 0.2) !important;
+    color: #2ecc71 !important;
+    border-color: rgba(46, 204, 113, 0.6) !important;
+    font-weight: bold !important;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.35);
+  }
+  .pulse-glow:hover {
+    background: rgba(46, 204, 113, 0.35) !important;
+  }
+  .beatmatch-btn {
+    font-weight: bold;
+    font-size: 11px;
+    transition: all .15s ease;
+  }
+  .beatmatch-btn.active {
+    background: #2ecc71 !important;
+    color: #12100e !important;
+    border-color: #2ecc71 !important;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+  }
+  .strategy-btn.active {
+    background: #ffb74d !important;
+    color: #12100e !important;
+    border-color: #ffb74d !important;
+    font-weight: 700 !important;
+  }
+
+  /* Spotify Presets Carousel */
+  .preset-carousel {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 3px 0;
+  }
+  .preset-btn {
+    border-radius: 20px !important;
+    padding: 4px 13px !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    background: #1e1b18 !important;
+    color: #ede6da !important;
+    border: 1px solid #3d372e !important;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .preset-btn:hover {
+    background: #2a2520 !important;
+    border-color: #635b4f !important;
+    color: #ffffff !important;
+  }
+  .preset-btn.active {
+    background: #ffffff !important;
+    color: #12100e !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
+    font-weight: 700 !important;
+  }
+
+  /* Floating Center Phrase Bars Pill */
+  .phrase-bars-pill {
+    background: #1e1b18;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    border-radius: 14px;
+    padding: 3px 14px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .phrase-bars-pill:hover {
+    background: #ffffff;
+    color: #12100e;
+    border-color: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  }
+
+  /* Spotify Auto Decision Banner */
+  .automix-ai-banner {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(30, 27, 24, 0.94);
+    border: 1px solid rgba(255, 183, 77, 0.5);
+    border-radius: 8px;
+    padding: 6px 14px;
+    margin: 6px auto;
+    max-width: 780px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: #ede6da;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+    animation: fadeInAuto 0.25s ease-out;
+  }
+  .automix-ai-banner b { color: #ffb74d; }
+  .automix-ai-banner span.tag {
+    background: rgba(255, 183, 77, 0.18);
+    border: 1px solid rgba(255, 183, 77, 0.6);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  @keyframes fadeInAuto {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Camelot Key Pill */
+  .camelot-pill {
+    background: rgba(245, 158, 11, 0.22);
+    border: 1px solid rgba(245, 158, 11, 0.65);
+    color: #f59e0b;
+    border-radius: 6px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: Consolas, monospace;
+    display: inline-block;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* Controls and toolbar */
+  .controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .control-label {
+    font-family: Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-right: 4px;
+  }
+  .divider {
+    width: 1px;
+    height: 22px;
+    background: var(--line);
+    margin: 0 6px;
+  }
+
+  button.btn {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 5px 11px;
+    cursor: pointer;
+    transition: color .12s, border-color .12s, background .12s;
+  }
+  button.btn:hover { color: var(--ink); border-color: var(--ink-dim); }
+  button.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.btn.active {
+    color: #121110;
+    background: var(--btn-c, var(--accent));
+    border-color: var(--btn-c, var(--accent));
+    font-weight: 700;
+  }
+  button.btn[data-lane="volume"] { --btn-c: var(--lane-vol); }
+  button.btn[data-lane="eq"]     { --btn-c: var(--lane-eq); }
+  button.btn[data-lane="filter"] { --btn-c: var(--lane-fil); }
+  button.btn[data-lane="all"]    { --btn-c: var(--ink); }
+  button.btn.highlight-btn {
+    border-color: rgba(29, 185, 84, 0.5);
+    color: #1ed760;
+    font-weight: 700;
+  }
+  button.btn.highlight-btn:hover {
+    border-color: #1ed760;
+    background: rgba(29, 185, 84, 0.18);
+    color: #ffffff;
+  }
+
+  .lane-explanation {
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-left: 6px;
+  }
+
+  /* Transport */
+  .transport-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+  }
+  button.play-btn {
+    font-family: "Arial Narrow", sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: #121110;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 24px;
+    cursor: pointer;
+    transition: filter .12s;
+  }
+  button.play-btn:hover { filter: brightness(1.1); }
+  button.play-btn:disabled {
+    background: var(--line);
+    color: var(--ink-faint);
+    cursor: not-allowed;
+    filter: none;
+  }
+  button.stop-btn {
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  button.stop-btn:hover { color: var(--ink); border-color: var(--ink-dim); }
+
+  .time-readout {
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+  .time-readout b { color: var(--ink); font-weight: 600; }
+  .time-readout i { font-style: normal; color: var(--ink-faint); font-size: 11px; margin-left: 6px; }
+
+  .sync-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+  .sync-toggle input { accent-color: var(--accent); cursor: pointer; }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+  .legend .sw {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+
+  .drag-hover {
+    outline: 2px dashed #ffb74d !important;
+    outline-offset: -2px !important;
+    background: rgba(255, 183, 77, 0.08) !important;
+  }
+
+  /* Native DSP Badge */
+  .dsp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-family: Consolas, monospace;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    text-transform: uppercase;
+  }
+  .dsp-badge:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .dsp-badge.online {
+    background: rgba(29, 185, 84, 0.14);
+    border-color: rgba(29, 185, 84, 0.45);
+    color: #1ed760;
+    box-shadow: 0 0 10px rgba(29, 185, 84, 0.2);
+  }
+  .dsp-badge.online .dsp-indicator {
+    color: #1ed760;
+    text-shadow: 0 0 8px #1ed760;
+  }
+  .dsp-badge.analyzing {
+    background: rgba(0, 240, 255, 0.14);
+    border-color: rgba(0, 240, 255, 0.45);
+    color: #00f0ff;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  }
+  .dsp-badge.analyzing .dsp-indicator {
+    color: #00f0ff;
+    text-shadow: 0 0 8px #00f0ff;
+    animation: pulseGlow 0.6s infinite alternate;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1>DJ Mix Studio</h1>
+  <span class="sub">dual-deck transition planner &amp; automation sculptor</span>
+  <div id="dspBadge" class="dsp-badge offline" title="Native DSP Engine Status (Click to test connection)" onclick="checkNativeDspHealth()">
+    <span class="dsp-indicator">●</span>
+    <span class="dsp-text">LOCAL BROWSER DSP</span>
+  </div>
+  <span class="hint">drop mp3s · drag points to sculpt curves · click line to add · dbl-click point to delete</span>
+</div>
+
+<div class="studio-stack" id="studioStack">
+  <!-- 1. Song 1 Header -->
+  <div class="deck-header" id="head0">
+    <span class="deck-badge">1</span>
+    <button class="deck-btn" id="playFullBtn0" disabled title="Play / Pause whole song">▶ Play Full</button>
+    <button class="deck-btn" id="loadBtn0" title="Open MP3 file">Load MP3</button>
+    <button class="deck-btn" id="cueStartBtn0" disabled title="Jump transition selection to start of Song 1">⏮ Start</button>
+    <button class="deck-btn" id="cueEndBtn0" disabled title="Jump transition selection to end of Song 1">⏭ End</button>
+    <span class="deck-title" id="title0">Song 1 — Drop an MP3</span>
+    <div class="deck-meta">
+      <div class="field"><label>time</label><span class="val-static" id="time0">0:00</span></div>
+      <div class="field"><label>bpm</label><input id="bpm0" value="128" inputmode="decimal" autocomplete="off" title="BPM (type or use Arrow Up/Down to nudge)"></div>
+      <div class="field-group" style="display:inline-flex; gap:2px;">
+        <button class="deck-btn nudge-btn" id="halfBpm0" style="padding:2px 4px; font-size:9px; height:22px;" title="Halve BPM (½)">½</button>
+        <button class="deck-btn nudge-btn" id="doubleBpm0" style="padding:2px 4px; font-size:9px; height:22px;" title="Double BPM (2×)">2×</button>
+      </div>
+      <div class="field"><label>key</label><input id="key0" class="key-input" value="—" autocomplete="off"><span class="camelot-pill" id="camelotPill0" title="Camelot Harmonic Key">5A</span></div>
+      <div class="field-group" style="display:inline-flex; gap:3px; margin-left:4px;">
+        <button class="deck-btn nudge-btn pulse-glow" id="snapPeak0" style="padding:2px 6px; font-size:10px; height:22px; color:var(--accent);" title="🎯 Snap to Peak: Lock Bar 1 grid directly to nearest kick drum crest">🎯 Snap</button>
+        <button class="deck-btn nudge-btn" id="shiftDownbeat0" style="padding:2px 6px; font-size:10px; height:22px;" title="Shift Bar 1 Downbeat (cycle 1-4)">↷ Bar 1</button>
+        <button class="deck-btn nudge-btn" id="nudgeGridBack0" style="padding:2px 6px; font-size:10px; height:22px;" title="Nudge Beatgrid -5ms (Shift+Click for -20ms)">◀ 5ms</button>
+        <button class="deck-btn nudge-btn" id="nudgeGridFwd0" style="padding:2px 6px; font-size:10px; height:22px;" title="Nudge Beatgrid +5ms (Shift+Click for +20ms)">5ms ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Song 1 Full Overview Waveform -->
+  <div class="canvas-wrap" id="wrapOverview0">
+    <canvas class="wave-overview" id="waveOverview0"></canvas>
+    <div class="canvas-empty-hint" id="empty0" title="Click to browse or drop an MP3">
+      <span>Deck 1 Empty</span>
+      <span class="sub">— click to browse or drop MP3</span>
+    </div>
+  </div>
+
+  <!-- 3. Selected Waveform for Song 1 (Zoomed with Curve Editor) -->
+  <div class="canvas-wrap">
+    <canvas class="wave-detail" id="waveDetail0"></canvas>
+  </div>
+
+  <!-- Spotify Automix AI Decision Banner -->
+  <div class="automix-ai-banner" id="automixAiBanner">
+    <span>✨ <b>SPOTIFY AUTOMIX:</b></span>
+    <span id="automixAiReason">Analyzing phrase seams & vocal collisions...</span>
+  </div>
+
+  <!-- Center Seam: Spotify-style Downbeat Alignment & Phase Lock -->
+  <div class="center-seam">
+    <button class="phrase-bars-pill" id="phraseBarsPill" title="Click to cycle phrase length: 16 bars ➔ 8 bars ➔ 4 bars ➔ 2 bars">16 bars</button>
+    <button class="deck-btn" id="swapSongsBtn" style="padding:2px 8px; font-size:10px; height:22px;" title="Swap Deck 1 and Deck 2">⇄ Swap</button>
+    <button class="deck-btn pulse-glow" id="alignBeatsBtn" style="padding:2px 10px; font-size:10px; height:22px;" title="Spotify Phase Alignment: Snap Song 2 kick drums to Song 1 downbeats with Δt = 0.0 ms">⚡ Align Beats</button>
+    <button class="deck-btn nudge-btn" id="nudgeBackBtn" style="padding:2px 7px; font-size:10px; height:22px;" title="Shift Song 2 phase back by 1 Bar (4 beats)">◀ 1 Bar</button>
+    <button class="deck-btn nudge-btn" id="nudgeFwdBtn" style="padding:2px 7px; font-size:10px; height:22px;" title="Shift Song 2 phase forward by 1 Bar (4 beats)">1 Bar ▶</button>
+    <button class="deck-btn" id="snapToggleBtn" style="padding:2px 8px; font-size:10px; height:22px;" title="Toggle Magnetic Snap: Beat vs Free movement">🧲 Snap: Beat</button>
+    <span class="seam-status badge-locked" id="phaseStatus">● BEATS LOCKED</span>
+    <span class="seam-status badge-locked" id="harmonicStatus" title="Camelot Harmonic Wheel (smixs/dj-mix)">HARMONIC: —</span>
+  </div>
+
+  <!-- 4. Selected Waveform for Song 2 (Zoomed with Curve Editor) -->
+  <div class="canvas-wrap">
+    <canvas class="wave-detail" id="waveDetail1"></canvas>
+  </div>
+
+  <!-- 5. Song 2 Full Overview Waveform -->
+  <div class="canvas-wrap" id="wrapOverview1">
+    <canvas class="wave-overview" id="waveOverview1"></canvas>
+    <div class="canvas-empty-hint" id="empty1" title="Click to browse or drop an MP3">
+      <span>Deck 2 Empty</span>
+      <span class="sub">— click to browse or drop MP3</span>
+    </div>
+  </div>
+
+  <!-- 6. Song 2 Header -->
+  <div class="deck-header deck-bottom" id="head1">
+    <span class="deck-badge">2</span>
+    <button class="deck-btn" id="playFullBtn1" disabled title="Play / Pause whole song">▶ Play Full</button>
+    <button class="deck-btn" id="loadBtn1" title="Open MP3 file">Load MP3</button>
+    <button class="deck-btn" id="cueStartBtn1" disabled title="Jump transition selection to start of Song 2">⏮ Start</button>
+    <button class="deck-btn" id="cueEndBtn1" disabled title="Jump transition selection to end of Song 2">⏭ End</button>
+    <span class="deck-title" id="title1">Song 2 — Drop an MP3</span>
+    <div class="deck-meta">
+      <div class="field"><label>time</label><span class="val-static" id="time1">0:00</span></div>
+      <div class="field"><label>bpm</label><input id="bpm1" value="128" inputmode="decimal" autocomplete="off" title="BPM (type or use Arrow Up/Down to nudge)"></div>
+      <div class="field-group" style="display:inline-flex; gap:2px;">
+        <button class="deck-btn nudge-btn" id="halfBpm1" style="padding:2px 4px; font-size:9px; height:22px;" title="Halve BPM (½)">½</button>
+        <button class="deck-btn nudge-btn" id="doubleBpm1" style="padding:2px 4px; font-size:9px; height:22px;" title="Double BPM (2×)">2×</button>
+      </div>
+      <div class="field"><label>key</label><input id="key1" class="key-input" value="—" autocomplete="off"><span class="camelot-pill" id="camelotPill1" title="Camelot Harmonic Key">6A</span></div>
+      <div class="field-group" style="display:inline-flex; gap:3px; margin-left:4px;">
+        <button class="deck-btn nudge-btn pulse-glow" id="snapPeak1" style="padding:2px 6px; font-size:10px; height:22px; color:var(--accent);" title="🎯 Snap to Peak: Lock Bar 1 grid directly to nearest kick drum crest">🎯 Snap</button>
+        <button class="deck-btn nudge-btn" id="shiftDownbeat1" style="padding:2px 6px; font-size:10px; height:22px;" title="Shift Bar 1 Downbeat (cycle 1-4)">↷ Bar 1</button>
+        <button class="deck-btn nudge-btn" id="nudgeGridBack1" style="padding:2px 6px; font-size:10px; height:22px;" title="Nudge Beatgrid -5ms (Shift+Click for -20ms)">◀ 5ms</button>
+        <button class="deck-btn nudge-btn" id="nudgeGridFwd1" style="padding:2px 6px; font-size:10px; height:22px;" title="Nudge Beatgrid +5ms (Shift+Click for +20ms)">5ms ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file inputs (positioned off-screen so file dialog always triggers on all browsers) -->
+<input type="file" id="file0" accept="audio/*, .mp3, .wav, .m4a, .aac, .ogg, .flac" style="position:fixed; top:-1000px; left:-1000px; opacity:0; pointer-events:none;">
+<input type="file" id="file1" accept="audio/*, .mp3, .wav, .m4a, .aac, .ogg, .flac" style="position:fixed; top:-1000px; left:-1000px; opacity:0; pointer-events:none;">
+
+<!-- 7. Controls: Beat Length + Automation Lanes -->
+<div class="controls-bar">
+  <!-- Transition duration buttons: Musical Phrases (Bars / Beats) + Seconds -->
+  <div class="control-group">
+    <span class="control-label">Length</span>
+    <button class="btn phrase-btn" data-beats="8" title="2 Musical Bars (8 Beats)">2 Bars (8b)</button>
+    <button class="btn phrase-btn active" data-beats="16" title="4 Musical Bars (16 Beats) — Standard DJ Phrase">4 Bars (16b)</button>
+    <button class="btn phrase-btn" data-beats="32" title="8 Musical Bars (32 Beats) — Extended DJ Blend">8 Bars (32b)</button>
+    <button class="btn dur-btn" data-sec="4" title="4 seconds">4s</button>
+    <button class="btn dur-btn" data-sec="8" title="8 seconds">8s</button>
+    <button class="btn dur-btn" data-sec="16" title="16 seconds">16s</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Lane selection buttons: Volume, EQ, Filter, Show All -->
+  <div class="control-group">
+    <span class="control-label">Curve</span>
+    <button class="btn lane-btn" data-lane="volume">Volume</button>
+    <button class="btn lane-btn" data-lane="eq">EQ (Bass)</button>
+    <button class="btn lane-btn" data-lane="filter">Filter</button>
+    <button class="btn lane-btn active" data-lane="all">Show All</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Spotify Transition Presets Carousel -->
+  <div class="control-group">
+    <span class="control-label">Presets</span>
+    <div class="preset-carousel">
+      <button class="btn preset-btn" data-preset="custom" title="Custom user-sculpted automation curves">Custom</button>
+      <button class="btn preset-btn active" data-preset="auto" title="✨ Spotify Auto 5-Stage Decision Pipeline: Intelligently profile tracks, avoid vocal clashes, pick optimal seam & recipe">✨ Auto</button>
+      <button class="btn preset-btn" data-preset="fade" title="Fade: Smooth volume curve with midpoint Center Bass Swap">Fade</button>
+      <button class="btn preset-btn" data-preset="rise" title="Rise: High-energy EDM buildup with highpass filter sweep into incoming drop">Rise</button>
+      <button class="btn preset-btn" data-preset="blend" title="Blend: Extended smooth harmonic groove blend across 16 bars">Blend</button>
+      <button class="btn preset-btn" data-preset="wave" title="Wave: Cross-filter sweep (Song 1 lowpass exit, Song 2 open sweep)">Wave</button>
+      <button class="btn preset-btn" data-preset="melt" title="Melt: Ambient filter wash dissolving outgoing song into reverb tail">Melt</button>
+      <button class="btn preset-btn" data-preset="slam" title="Slam: Instant downbeat cut/switch on the exact microsecond (beat switch / drop)">Slam</button>
+      <button class="btn preset-btn" data-preset="dissolve" title="Dissolve: Song 2 fades in early underneath Song 1 with late bass swap">Dissolve</button>
+      <button class="btn preset-btn" data-preset="surge" title="Surge: Fast crescendo surge build on incoming track">Surge</button>
+      <button class="btn preset-btn" data-preset="afterglow" title="Afterglow: High-resonance melodic outro linger as incoming groove takes over">Afterglow</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Spotify Automix 4 Tempo Ramping Strategies -->
+  <div class="control-group">
+    <span class="control-label">Tempo Strategy</span>
+    <button class="btn strategy-btn active" data-strategy="auto" title="Spotify Auto Decision Tree: Selects optimal strategy (Continuous Ramp, Target Average, 2:1 Multiple, or Radio Fade)">⚡ Auto</button>
+    <button class="btn strategy-btn" data-strategy="1" title="Strategy 1: Dynamic Continuous Ramp across transition (Smooth Sigmoid)">Continuous Ramp</button>
+    <button class="btn strategy-btn" data-strategy="2" title="Strategy 2: Intermediate Target BPM (Average Target)">Target Average</button>
+    <button class="btn strategy-btn" data-strategy="3" title="Strategy 3: Integer Multiple Alignment (2:1 Half/Double-Time)">2:1 Multiple</button>
+    <button class="btn strategy-btn" data-strategy="4" title="Strategy 4: Radio Crossfade / Drop (Raw 1.0x Speeds - No Warp)">Radio Fade</button>
+  </div>
+
+  <span class="lane-explanation" id="laneDesc">Volume (Blue Line): Track loudness — fades the track in or out</span>
+
+  <div class="divider"></div>
+
+  <div class="legend">
+    <span><span class="sw" style="background:var(--hi)"></span>Highs</span>
+    <span><span class="sw" style="background:var(--mid)"></span>Mids</span>
+    <span><span class="sw" style="background:var(--lo)"></span>Lows</span>
+  </div>
+</div>
+
+<!-- Transport Controls -->
+<div class="transport-bar">
+  <button class="play-btn" id="playFullMixBtn" disabled title="Play Song 1 lead-in -> transition blend -> Song 2 all the way to the end">▶ Play Full Mix</button>
+  <button class="btn" id="playBlendBtn" disabled title="Play only the transition window">▶ Blend Only</button>
+  <button class="stop-btn" id="stopBtn" style="display:none;">Stop</button>
+
+  <div class="control-group" style="margin-left:6px;">
+    <span class="control-label" style="font-size:10px;">Lead-in:</span>
+    <button class="btn lead-btn active" data-sec="0" title="Start both songs playing simultaneously together with zero delay">0s (Together)</button>
+    <button class="btn lead-btn" data-sec="3">3s</button>
+    <button class="btn lead-btn" data-sec="6">6s</button>
+    <button class="btn lead-btn" data-sec="12">12s</button>
+    <button class="btn lead-btn" data-sec="full" title="Play Song 1 all the way from 0:00 to the transition">From Start</button>
+  </div>
+
+  <span class="time-readout" id="timeRead">Load both songs to mix</span>
+
+  <div class="sync-toggle" style="display:flex; align-items:center; gap:8px;">
+    <button class="btn beatmatch-btn active" id="beatmatchToggleBtn" title="Spotify Automix Engine: Lock downbeats and match tempo across transition">🔘 Beatmatching: ON</button>
+    <span id="tempoBadge" style="color:var(--hi); font-size:10px; font-family:Consolas,monospace; font-weight:bold;">128 → 128 BPM (0.0%)</span>
+    <span id="strategyBadge" class="seam-status badge-locked" style="font-size:10px; padding:2px 8px; height:20px;" title="Active Spotify Automix Tempo Strategy">⚡ Continuous Ramp</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   DJ Mix Studio — Standalone Dual-Deck Transition Planner
+   Meets all specifications in dj mix.txt:
+   - Mirrored dual overview + stacked detail layout
+   - 3-band colored waveforms (blue, orange, white)
+   - Smooth soft beat-snapping
+   - Volume, EQ (Bass), Filter automation curves with pinned ends
+   - Refined, forgiving graph editor with hover halo & live tooltips
+   - 2, 4, 8, 16 beats locked selection
+   - Simultaneous overlapping transition playback with BPM Sync
+   - Whole song full playback & scrub preview
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp  = (a, b, t) => a + (b - a) * t;
+
+const COLS = {
+  hi:     "#5aa7e8", // Highs = blue
+  mid:    "#e88d3c", // Mids  = orange
+  lo:     "#ede6da", // Lows  = white
+  vol:    "#5cb3ff", // Volume = Blue
+  eq:     "#ffca28", // EQ (Bass) = Yellow
+  fil:    "#ff5c93", // Filter = Pink
+  ink:    "#ede6da",
+  dim:    "#9c937f",
+  faint:  "#675f50",
+  accent: "#ffb74d"
+};
+
+const LANE_INFO = {
+  volume: "Volume (Cyan Line): Master gain envelope — Equal-power crossfade or Spotify overlap",
+  eq:     "EQ (Yellow Line): Bass & Kick Drum (< 250 Hz) — Swap basslines at the center downbeat to eliminate sub-bass clashes",
+  filter: "Filter (Pink Line): DJ Filter Sweep — Resonant 20 Hz to 20 kHz lowpass/highpass sweep with +3 dB crest",
+  all:    "Show All: Displays Volume (Cyan), EQ Bass (Yellow), and Filter (Pink) automation curves simultaneously"
+};
+
+let sharedDurationSec = 7.5;         // Shared transition duration in seconds (defaults to 16 beats @ 128 BPM)
+let activeLane  = "all";          // volume | eq | filter | all
+let bpmSync     = true;              // lock deck 2 playbackRate to deck 1
+let beatmatching = true;             // Spotify Automix Beatmatching toggle (ON by default)
+let magneticSnap = true;             // Magnetic beat/downbeat snapping (toggleable for 100% free movement)
+let activePhraseBeats = 16;          // Active phrase preset: 8, 16, or 32 beats (4 bars standard)
+let selectedTempoStrategy = "auto";  // "auto" | "1" | "2" | "3" | "4" (Spotify Automix 4 Strategies)
+let audioCtx    = null;
+let transport   = "idle";            // idle | playing | paused | fullMix | fullMixPaused | fullTrack | fullTrackPaused
+let needsDraw   = true;
+const markDraw  = () => { needsDraw = true; };
+let dragPan     = { active: false, song: -1, startX: 0, initialStart: 0 };
+
+let leadInSec   = 0;                 // 0s (Together / Simultaneous) | 3 | 6 | 12 seconds
+let mixState = {
+  startedAt: 0,
+  pausedAtAudioTime: 0,
+  leadIn: 0,
+  dur1: 0,
+  transDur: 0,
+  rate2: 1.0,
+  totalMixDur: 0,
+  mode: "fullMix"
+};
+
+/* Full track single-song preview state */
+let fullTrack = {
+  i: -1,
+  startedAt: 0,
+  startPos: 0,
+  pausedAt: 0,
+  src: null,
+  gain: null
+};
+
+/* Hover state for graph editor */
+const hoverState = {
+  song: -1,
+  pt: -1,
+  isLine: false,
+  x: 0,
+  y: 0,
+  px: 0,
+  py: 0
+};
+
+/* Song State */
+function makeSong(i) {
+  return {
+    i,
+    name: "",
+    buffer: null,
+    duration: 0,
+    bpm: 128,
+    bpmLocked: false,
+    key: "—",
+    keyLocked: false,
+    confidence: 0.85,                // beat tracking confidence score γ ∈ [0, 1]
+    beats: [],                       // beat times in seconds
+    barOffset: 0,                    // modulo-4 phase offset (0..3) for Bar 1 Downbeats
+    peaks: null,
+    peaksW: 0,
+    sel: { start: 0, len: 0 },       // seconds in this track
+    selTarget: null,                 // soft snap easing target
+    // Default curves: Deck 1 fades out, Deck 2 fades in on Volume.
+    // EQ (Bass) and Filter default to flat neutral baseline (y = 0.5) so they never inject an unwanted phantom fade!
+    lanes: {
+      volume: i === 0 ? [{ x: 0, y: 0.5 }, { x: 1, y: 0.0 }] : [{ x: 0, y: 0.0 }, { x: 1, y: 0.5 }],
+      eq:     [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }],
+      filter: [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }],
+    },
+    nodes: null                      // live Web Audio node graph
+  };
+}
+
+const songs = [makeSong(0), makeSong(1)];
+
+/* ------------------------------------------------------------
+   BPM Detection & Beat Grid Analysis (ACF + Comb Filter)
+------------------------------------------------------------ */
+function fftInPlace(re, im, N) {
+  for (let i = 1, j = 0; i < N; i++) {
+    let bit = N >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      let tr = re[i]; re[i] = re[j]; re[j] = tr;
+      let ti = im[i]; im[i] = im[j]; im[j] = ti;
+    }
+  }
+  for (let len = 2; len <= N; len <<= 1) {
+    const half = len >> 1, step = N / len;
+    for (let i = 0; i < N; i += len) {
+      for (let k = 0; k < half; k++) {
+        const ang = -2 * Math.PI * k * step / N;
+        const wr = Math.cos(ang), wi = Math.sin(ang);
+        const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + half] * wr - im[i + k + half] * wi;
+        const vi = re[i + k + half] * wi + im[i + k + half] * wr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi;
+        re[i + k + half] = ur - vr; im[i + k + half] = ui - vi;
+      }
+    }
+  }
+}
+
+function detectBPM(buffer) {
+  const sr = buffer.sampleRate;
+  const nCh = buffer.numberOfChannels;
+  const maxN = Math.min(buffer.length, Math.floor(sr * 120));
+  const start = Math.floor((buffer.length - maxN) / 2);
+  const mono = new Float32Array(maxN);
+  for (let n = 0; n < maxN; n++) {
+    let s = 0; const idx = start + n;
+    for (let c = 0; c < nCh; c++) s += buffer.getChannelData(c)[idx];
+    mono[n] = s / nCh;
+  }
+  const a = Math.exp(-2 * Math.PI * 150 / sr);
+  let lp = 0;
+  const envN = 50, envLen = Math.floor(mono.length / envN), envRate = sr / envN;
+  const env = new Float32Array(envLen);
+  for (let k = 0; k < envLen; k++) {
+    let sum = 0;
+    for (let j = 0; j < envN; j++) {
+      lp = a * lp + (1 - a) * mono[k * envN + j];
+      sum += lp * lp;
+    }
+    env[k] = sum;
+  }
+  const diff = new Float32Array(envLen);
+  for (let k = 1; k < envLen; k++) diff[k] = Math.max(0, env[k] - env[k - 1]);
+  let mean = 0;
+  for (let k = 0; k < envLen; k++) mean += diff[k];
+  mean /= envLen;
+  for (let k = 0; k < envLen; k++) diff[k] -= mean;
+
+  let N = 1; while (N < envLen * 2) N <<= 1;
+  const re = new Float32Array(N), im = new Float32Array(N);
+  re.set(diff);
+  fftInPlace(re, im, N);
+  for (let k = 0; k < N; k++) { re[k] = re[k] * re[k] + im[k] * im[k]; im[k] = 0; }
+  fftInPlace(re, im, N);
+  const acf = new Float32Array(envLen);
+  for (let k = 0; k < envLen; k++) acf[k] = re[k] / N;
+
+  const maxValidLag = Math.floor(envLen / 2);
+  const acfAt = L => {
+    if (L < 1 || L > maxValidLag - 1) return -Infinity;
+    const i = Math.floor(L), f = L - i;
+    return lerp(acf[i] / (envLen - i), acf[i + 1] / (envLen - i - 1), f);
+  };
+  const lagLo = envRate * 60 / 190;
+  const lagHi = envRate * 60 / 60;
+
+  const peaks = [];
+  for (let lag = Math.ceil(lagLo); lag < lagHi && lag < maxValidLag - 1; lag++) {
+    if (acf[lag] > acf[lag - 1] && acf[lag] >= acf[lag + 1]) {
+      const y0 = acf[lag - 1], y1 = acf[lag], y2 = acf[lag + 1];
+      const den = y0 - 2 * y1 + y2;
+      const shift = Math.abs(den) > 1e-12 ? clamp(0.5 * (y0 - y2) / den, -1, 1) : 0;
+      const lagF = lag + shift;
+      const bpm = 60 / (lagF / envRate);
+      if (bpm >= 60 && bpm <= 190) peaks.push({ lag: lagF, bpm, v: acfAt(lagF) });
+    }
+  }
+  peaks.sort((p, q) => q.v - p.v);
+  const top = peaks.slice(0, 8);
+  if (!top.length) return fallbackGrid(buffer, 128);
+
+  const cands = new Set();
+  for (const p of top) {
+    for (const r of [0.5, 1, 2]) {
+      const b = p.bpm * r;
+      if (b >= 75 && b <= 185) cands.add(Math.round(b * 10) / 10);
+    }
+  }
+  const HARM = [[1, 1], [2, 0.8], [3, 0.5]];
+  // Harmonic candidate evaluation with Dan Ellis / Echo Nest 124 BPM perceptual tempo prior
+  let best = { b: 128, v: -Infinity };
+  for (const b of cands) {
+    const L1 = envRate * 60 / b;
+    let s = 0, ok = true;
+    for (const [h, w] of HARM) {
+      const v = acfAt(L1 * h);
+      if (v === -Infinity) { ok = false; break; }
+      s += v * w;
+    }
+    const prior = Math.exp(-0.5 * Math.pow(Math.log2(b / 124) / 0.55, 2));
+    const totalScore = s * prior;
+    if (ok && totalScore > best.v) best = { b, v: totalScore };
+  }
+
+  // Fine-pitch parabolic search around best candidate (0.01 BPM precision)
+  let refinedBpm = best.b;
+  let refinedVal = best.v;
+  for (let delta = -0.5; delta <= 0.5; delta += 0.01) {
+    const candBpm = Math.round((best.b + delta) * 100) / 100;
+    const L1 = envRate * 60 / candBpm;
+    let s = 0, ok = true;
+    for (const [h, w] of HARM) {
+      const v = acfAt(L1 * h);
+      if (v === -Infinity) { ok = false; break; }
+      s += v * w;
+    }
+    const prior = Math.exp(-0.5 * Math.pow(Math.log2(candBpm / 124) / 0.55, 2));
+    const totalScore = s * prior;
+    if (ok && totalScore > refinedVal) {
+      refinedVal = totalScore;
+      refinedBpm = candBpm;
+    }
+  }
+  let bpm = refinedBpm || 128;
+  // If detected tempo is < 88 BPM and 2x BPM is in dance range, promote to double-tempo
+  if (bpm < 88 && (bpm * 2) >= 90 && (bpm * 2) <= 180) {
+    bpm *= 2;
+  }
+  const beatLen = 60 / bpm;
+  const tStart = start / sr;
+
+  // Phase Alignment: search across 1 full beat period within the analyzed segment
+  let bestPhase = 0, bestPhaseE = -Infinity;
+  const maxAnalyzedTime = tStart + envLen / envRate;
+  for (let ph = 0; ph < beatLen; ph += 0.002) {
+    let e = 0;
+    for (let t = tStart + ph; t < maxAnalyzedTime; t += beatLen) {
+      const k = Math.round((t - tStart) * envRate);
+      if (k >= 1 && k < envLen - 1) {
+        const onset = Math.max(0, diff[k]);
+        const peakEnergy = env[k];
+        e += 0.5 * onset + 0.5 * peakEnergy;
+      }
+    }
+    if (e > bestPhaseE) { bestPhaseE = e; bestPhase = ph; }
+  }
+
+  const phase = (((tStart + bestPhase) % beatLen) + beatLen) % beatLen;
+  const beats = [];
+  for (let t = phase; t < buffer.duration; t += beatLen) beats.push(Math.round(t * 1000) / 1000);
+
+  // Downbeat (Bar 1) Detection (Spotify & Mixxx Architecture):
+  // Measures the low-frequency kick drum energy (< 150 Hz) and onset attack at each modulo-4 phase
+  let bestBarOffset = 0, maxBarEnergy = -Infinity;
+  for (let c = 0; c < 4; c++) {
+    let energy = 0, count = 0;
+    for (let i = c; i < beats.length; i += 4) {
+      const k = Math.round((beats[i] - tStart) * envRate);
+      if (k >= 0 && k < envLen) {
+        energy += env[k] + Math.max(0, diff[k]) * 1.5;
+        count++;
+      }
+    }
+    const avg = count > 0 ? energy / count : 0;
+    if (avg > maxBarEnergy) {
+      maxBarEnergy = avg;
+      bestBarOffset = c;
+    }
+  }
+
+  // Beat confidence calculation (Echo Nest / Spotify.dll specification):
+  let confidence = 0.85;
+  if (top.length > 0 && top[0].v > 0) {
+    const peakProminence = top.length > 1 ? (top[0].v / Math.max(1e-9, top[1].v)) : 1.5;
+    const normAcf = clamp(top[0].v * 100, 0.3, 1.0);
+    confidence = clamp(0.4 + 0.3 * Math.min(2.0, peakProminence) + 0.3 * normAcf, 0.2, 0.99);
+  }
+
+  return { bpm: Math.round(bpm * 10) / 10, beats, barOffset: bestBarOffset, confidence };
+}
+
+function fallbackGrid(buffer, bpm) {
+  const beatLen = 60 / bpm;
+  const beats = [];
+  for (let t = 0; t < buffer.duration; t += beatLen) beats.push(t);
+  return { bpm, beats, barOffset: 0, confidence: 0.40 };
+}
+
+/* ------------------------------------------------------------
+   Key Detection (Krumhansl-Schmuckler)
+------------------------------------------------------------ */
+const KS_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const KS_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+const PITCHES  = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+function detectKey(buffer) {
+  const sr = buffer.sampleRate;
+  const N = 4096, hop = N;
+  const ch0 = buffer.getChannelData(0);
+  const ch1 = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : ch0;
+  const maxFrames = Math.min(300, Math.floor(buffer.length / hop));
+  const fStart = Math.floor(buffer.length * 0.05 / hop);
+  const chroma = new Float32Array(12);
+  const re = new Float32Array(N), im = new Float32Array(N);
+  let frames = 0;
+
+  for (let f = fStart; f < fStart + maxFrames; f++) {
+    const off = f * hop;
+    if (off + N > buffer.length) break;
+    for (let n = 0; n < N; n++) {
+      const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * n / (N - 1));
+      re[n] = ((ch0[off + n] + ch1[off + n]) * 0.5) * w;
+      im[n] = 0;
+    }
+    fftInPlace(re, im, N);
+    const binLo = Math.max(1, Math.floor(100 * N / sr));
+    const binHi = Math.min(N / 2 - 1, Math.ceil(4500 * N / sr));
+    for (let b = binLo; b <= binHi; b++) {
+      const midi = 69 + 12 * Math.log2(b * sr / N / 440);
+      const pc = ((Math.round(midi) % 12) + 12) % 12;
+      chroma[pc] += Math.sqrt(re[b] * re[b] + im[b] * im[b]);
+    }
+    frames++;
+  }
+  if (!frames) return null;
+  let total = 0; for (let c = 0; c < 12; c++) total += chroma[c];
+  if (total <= 0) return null;
+  for (let c = 0; c < 12; c++) chroma[c] = Math.pow(chroma[c] / total, 0.5);
+
+  let best = { r: -Infinity, root: 0, mode: "maj" };
+  for (let root = 0; root < 12; root++) {
+    for (const [prof, mode] of [[KS_MAJOR, "maj"], [KS_MINOR, "min"]]) {
+      let sum = 0, m = 0;
+      for (let i = 0; i < 12; i++) { sum += chroma[(i + root) % 12]; m += prof[i]; }
+      let num = 0, d1 = 0, d2 = 0;
+      for (let i = 0; i < 12; i++) {
+        const a = chroma[(i + root) % 12] - sum / 12, b = prof[i] - m / 12;
+        num += a * b; d1 += a * a; d2 += b * b;
+      }
+      const r = num / Math.sqrt(d1 * d2 + 1e-12);
+      if (r > best.r) best = { r, root, mode };
+    }
+  }
+  const note = PITCHES[best.root] + " " + best.mode;
+  const cam = toCamelot(note);
+  return { key: note, camelot: cam, display: cam + " (" + note + ")" };
+}
+
+/* ------------------------------------------------------------
+   Camelot Wheel & Harmonic Mixing (smixs/dj-mix & Mixxx)
+------------------------------------------------------------ */
+const CAMELOT_MAP = {
+  "C maj": "8B",  "C min": "5A",
+  "C# maj": "3B", "C# min": "12A",
+  "Db maj": "3B", "Db min": "12A",
+  "D maj": "10B", "D min": "7A",
+  "D# maj": "5B", "D# min": "2A",
+  "Eb maj": "5B", "Eb min": "2A",
+  "E maj": "12B", "E min": "9A",
+  "F maj": "7B",  "F min": "4A",
+  "F# maj": "2B", "F# min": "11A",
+  "Gb maj": "2B", "Gb min": "11A",
+  "G maj": "9B",  "G min": "6A",
+  "G# maj": "4B", "G# min": "1A",
+  "Ab maj": "4B", "Ab min": "1A",
+  "A maj": "11B", "A min": "8A",
+  "A# maj": "6B", "A# min": "3A",
+  "Bb maj": "6B", "Bb min": "3A",
+  "B maj": "1B",  "B min": "10A"
+};
+
+function toCamelot(keyStr) {
+  if (!keyStr) return "—";
+  const str = String(keyStr).trim();
+  const directMatch = str.match(/\b([1-9]|1[0-2])[AB]\b/i);
+  if (directMatch) return directMatch[0].toUpperCase();
+  const cleanNote = str.replace(/[()]/g, "").trim();
+  return CAMELOT_MAP[cleanNote] || CAMELOT_MAP[str] || str;
+}
+
+function getHarmonicMatch(k1, k2) {
+  const c1 = toCamelot(k1);
+  const c2 = toCamelot(k2);
+  const m1 = c1.match(/^(\d+)([AB])$/);
+  const m2 = c2.match(/^(\d+)([AB])$/);
+  if (!m1 || !m2) {
+    if (c1 === "—" || c2 === "—") return { text: "HARMONIC: LOAD 2 TRACKS", cls: "badge-locked" };
+    return { text: "HARMONIC: " + c1 + " ➔ " + c2, cls: "badge-locked" };
+  }
+  const num1 = parseInt(m1[1], 10), let1 = m1[2];
+  const num2 = parseInt(m2[1], 10), let2 = m2[2];
+  const diff = (num2 - num1 + 12) % 12;
+
+  if (c1 === c2) return { text: "● HARMONIC: SAME KEY (" + c1 + ")", cls: "badge-locked" };
+  if (num1 === num2 && let1 !== let2) return { text: "● RELATIVE MAJ/MIN (" + c1 + " ⇄ " + c2 + ")", cls: "badge-locked" };
+  if ((diff === 1 || diff === 11) && let1 === let2) return { text: "● HARMONIC STEP (" + c1 + " ➔ " + c2 + ")", cls: "badge-locked" };
+  if (diff === 2 && let1 === let2) return { text: "⚡ ENERGY BOOST +2 (" + c1 + " ➔ " + c2 + ")", cls: "badge-locked" };
+  if ((diff === 1 || diff === 11) && let1 !== let2) return { text: "◆ DIAGONAL MIX (" + c1 + " ➔ " + c2 + ")", cls: "badge-drift" };
+  return { text: "⚠ KEY CLASH (" + c1 + " ➔ " + c2 + ")", cls: "badge-drift" };
+}
+
+/* ------------------------------------------------------------
+   3-Band Waveform Peak Extraction (Lows=White, Mids=Orange, Highs=Blue)
+------------------------------------------------------------ */
+function computePeaks(song, width) {
+  const buffer = song.buffer;
+  const nCh = buffer.numberOfChannels;
+  const chs = [];
+  for (let c = 0; c < nCh; c++) chs.push(buffer.getChannelData(c));
+  const n = buffer.length, sr = buffer.sampleRate;
+  const per = Math.max(1, Math.floor(n / width));
+  const lo = new Array(width), mid = new Array(width), hi = new Array(width);
+  const aLo = Math.exp(-2 * Math.PI * 250 / sr);
+  const aH  = Math.exp(-2 * Math.PI * 4000 / sr);
+  let sLo = 0, sH = 0, idx = 0;
+
+  for (let px = 0; px < width; px++) {
+    let loMin = 1e9, loMax = -1e9, midMin = 1e9, midMax = -1e9, hiMin = 1e9, hiMax = -1e9;
+    const end = Math.min(n, (px + 1) * per);
+    for (; idx < end; idx++) {
+      let v = 0;
+      for (let c = 0; c < nCh; c++) v += chs[c][idx];
+      v /= nCh;
+      sLo = aLo * sLo + (1 - aLo) * v;
+      sH  = aH  * sH  + (1 - aH)  * v;
+      const l = sLo, m = sH - sLo, h = v - sH;
+      if (l < loMin) loMin = l; if (l > loMax) loMax = l;
+      if (m < midMin) midMin = m; if (m > midMax) midMax = m;
+      if (h < hiMin) hiMin = h; if (h > hiMax) hiMax = h;
+    }
+    lo[px]  = { min: loMin,  max: loMax };
+    mid[px] = { min: midMin, max: midMax };
+    hi[px]  = { min: hiMin,  max: hiMax };
+  }
+  song.peaks = { lo, mid, hi };
+  song.peaksW = width;
+}
+
+/* ------------------------------------------------------------
+   Canvas Setup Helpers
+------------------------------------------------------------ */
+function setupCanvas(cv, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 900;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(cssH * dpr);
+  cv.style.height = cssH + "px";
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return g;
+}
+
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+/* Set shared transition duration in seconds (strictly equal on both decks) */
+function setSharedTransitionDuration(sec) {
+  sharedDurationSec = Math.max(0.5, Math.round(sec * 10) / 10);
+  applySelectedStrategy();
+}
+
+/* ------------------------------------------------------------
+   Spotify Automix Beatmatching Engine
+------------------------------------------------------------ */
+function snapGridToNearestPeak(i) {
+  const song = songs[i];
+  if (!song.buffer || !song.beats || !song.beats.length) return;
+  const sr = song.buffer.sampleRate;
+  const ch0 = song.buffer.getChannelData(0);
+  const ch1 = song.buffer.numberOfChannels > 1 ? song.buffer.getChannelData(1) : ch0;
+
+  // Find the beat nearest to the center of the visible transition window
+  const centerSec = song.sel.start + song.sel.len * 0.5;
+  let bestBeatIdx = 0, minD = Infinity;
+  for (let k = 0; k < song.beats.length; k++) {
+    const d = Math.abs(song.beats[k] - centerSec);
+    if (d < minD) { minD = d; bestBeatIdx = k; }
+  }
+  const targetBeatSec = song.beats[bestBeatIdx];
+
+  const beatLen = 60 / (song.bpm || 128);
+  const searchRadiusSec = Math.min(0.24, beatLen * 0.45);
+  const startSample = Math.max(0, Math.floor((targetBeatSec - searchRadiusSec) * sr));
+  const endSample = Math.min(song.buffer.length, Math.floor((targetBeatSec + searchRadiusSec) * sr));
+
+  const aLo = Math.exp(-2 * Math.PI * 180 / sr);
+  let sLo = 0, maxEnergy = -1, peakSample = Math.floor(targetBeatSec * sr);
+
+  for (let n = startSample; n < endSample; n++) {
+    const v = (ch0[n] + ch1[n]) * 0.5;
+    sLo = aLo * sLo + (1 - aLo) * v;
+    const energy = sLo * sLo;
+    if (energy > maxEnergy) {
+      maxEnergy = energy;
+      peakSample = n;
+    }
+  }
+
+  const peakSec = peakSample / sr;
+  const dt = peakSec - targetBeatSec;
+  if (Math.abs(dt) > 0.0005) {
+    nudgeBeatGrid(i, dt);
+  }
+}
+
+function rebuildBeatGrid(song, newBpm) {
+  song.bpm = Math.max(30, Math.min(300, newBpm));
+  if (!song.buffer) return;
+  const beatLen = 60 / song.bpm;
+
+  // Preserve the existing downbeat anchor if available
+  let anchor = 0;
+  if (song.beats && song.beats.length > 0) {
+    const downbeatIdx = ((song.barOffset || 0) % 4 + 4) % 4;
+    anchor = song.beats[downbeatIdx] ?? song.beats[0] ?? 0;
+  }
+  const phase = ((anchor % beatLen) + beatLen) % beatLen;
+  const beats = [];
+  for (let t = phase; t < song.duration; t += beatLen) {
+    beats.push(Math.round(t * 1000) / 1000);
+  }
+  song.beats = beats;
+
+  // Find which beat in the new grid is closest to the anchor to set barOffset
+  let bestIdx = 0, minDiff = Infinity;
+  for (let k = 0; k < Math.min(4, beats.length); k++) {
+    const diff = Math.abs(beats[k] - anchor);
+    if (diff < minDiff) { minDiff = diff; bestIdx = k; }
+  }
+  song.barOffset = bestIdx;
+}
+
+function applyManualBpm(i, newBpm, updateInput = false) {
+  if (!isFinite(newBpm) || newBpm < 30 || newBpm > 300) return;
+  const song = songs[i];
+  song.bpmLocked = true;
+  rebuildBeatGrid(song, newBpm);
+
+  if (updateInput && $("bpm" + i)) {
+    const displayVal = (newBpm % 1 === 0) ? String(newBpm) : String(Math.round(newBpm * 10) / 10);
+    $("bpm" + i).value = displayVal;
+  }
+
+  applySelectedStrategy();
+}
+
+/* ------------------------------------------------------------
+   Spotify Automix 4 Tempo Ramping Strategies
+   Strategy 1: Dynamic Continuous Ramp (Smooth Sigmoid across 4 bars)
+   Strategy 2: Intermediate Target BPM (Target Average)
+   Strategy 3: Integer Multiple Alignment (2:1 Half/Double-Time)
+   Strategy 4: Radio Crossfade (1.0x Native Speeds - No Warp)
+------------------------------------------------------------ */
+function resolveSpotifyStrategy(bpm1, bpm2, conf1, conf2) {
+  if (conf1 === undefined) conf1 = (songs[0] && songs[0].confidence !== undefined) ? songs[0].confidence : 0.85;
+  if (conf2 === undefined) conf2 = (songs[1] && songs[1].confidence !== undefined) ? songs[1].confidence : 0.85;
+
+  if (selectedTempoStrategy === "1") {
+    return { id: 1, name: "Strategy 1: Dynamic Continuous Ramp (Sigmoid)", short: "Continuous Ramp" };
+  }
+  if (selectedTempoStrategy === "2") {
+    return { id: 2, name: "Strategy 2: Target BPM Average", short: "Target Average" };
+  }
+  if (selectedTempoStrategy === "3") {
+    return { id: 3, name: "Strategy 3: Integer Multiple (2:1 Harmonic)", short: "2:1 Multiple" };
+  }
+  if (selectedTempoStrategy === "4") {
+    return { id: 4, name: "Strategy 4: Radio Crossfade (1.0x Native)", short: "Radio Fade" };
+  }
+
+  // When beatmatching toggle is explicitly disabled:
+  if (!beatmatching) {
+    return { id: 4, name: "Strategy 4: Radio Crossfade (1.0x Native)", short: "Radio Fade" };
+  }
+
+  // "auto": Spotify Automix Decision Tree:
+  if (!bpm1 || !bpm2) return { id: 1, name: "Strategy 1: Dynamic Continuous Ramp (Sigmoid)", short: "Continuous Ramp" };
+
+  const minBPM = Math.min(bpm1, bpm2);
+  const maxBPM = Math.max(bpm1, bpm2);
+  const deltaBpmPct = ((maxBPM - minBPM) / minBPM) * 100;
+  const ratio = maxBPM / minBPM;
+  const minConf = Math.min(conf1, conf2);
+
+  // RULE 1: Check for Harmonic Integer Multiples -> Strategy 3 (2:1 Ratio)
+  if (Math.abs(ratio - 2.0) <= 0.06) {
+    return { id: 3, name: "Strategy 3: Integer Multiple (2:1 Harmonic)", short: "2:1 Multiple" };
+  }
+
+  // RULE 2: Incompatible Limits -> Strategy 4 (Radio Crossfade)
+  if (deltaBpmPct > 15.0 || minConf < 0.60) {
+    return { id: 4, name: "Strategy 4: Radio Crossfade (1.0x Native)", short: "Radio Fade" };
+  }
+
+  // RULE 3: Small Tempo Gap (<= 8%) -> Strategy 1 (Continuous S-Curve Ramp)
+  if (deltaBpmPct <= 8.0) {
+    return { id: 1, name: "Strategy 1: Dynamic Continuous Ramp (Sigmoid)", short: "Continuous Ramp" };
+  }
+
+  // RULE 4: Moderate Tempo Gap (8 - 15%) -> Strategy 2 (Target BPM Average)
+  return { id: 2, name: "Strategy 2: Target BPM Average", short: "Target Average" };
+}
+
+function getLiveRampingRates(strategyId, u, bpm1, bpm2) {
+  u = clamp(u, 0, 1);
+  const S = u * u * (3 - 2 * u); // Smooth sigmoid S-curve
+
+  if (strategyId === 1) {
+    // Strategy 1: Dynamic Continuous Ramp from BPM1 to BPM2
+    const curBPM = bpm1 + (bpm2 - bpm1) * S;
+    const r0 = curBPM / bpm1;
+    const r1 = curBPM / bpm2;
+    return { r0, r1, curBPM };
+  }
+  if (strategyId === 2) {
+    // Strategy 2: Target BPM Average
+    const targetBPM = (bpm1 + bpm2) / 2;
+    const r0 = targetBPM / bpm1;
+    const r1 = targetBPM / bpm2;
+    return { r0, r1, curBPM: targetBPM };
+  }
+  if (strategyId === 3) {
+    // Strategy 3: Integer Multiple Alignment (2:1 or 1:2)
+    const ratio = bpm1 / bpm2;
+    const mult = ratio >= 1.5 ? 0.5 : (ratio <= 0.75 ? 2.0 : 1.0);
+    const effTarget = bpm1 * mult;
+    const r0 = 1.0;
+    const r1 = effTarget / bpm2;
+    return { r0, r1, curBPM: bpm1 };
+  }
+  if (strategyId === 4) {
+    // Strategy 4: Native 1.0x (Radio Crossfade)
+    return { r0: 1.0, r1: 1.0, curBPM: (u < 0.5 ? bpm1 : bpm2) };
+  }
+  // Standard Club DJ Beatmatch: Deck 1 locked at 1.0x, Deck 2 matched to Deck 1 BPM
+  const r1 = (bpm1 && bpm2) ? (bpm1 / bpm2) : 1.0;
+  return { r0: 1.0, r1, curBPM: bpm1 };
+}
+
+function getEffectiveTempoRatio(bpm1, bpm2) {
+  if (!bpm1 || !bpm2) return 1.0;
+  const strat = resolveSpotifyStrategy(bpm1, bpm2);
+  if (strat.id === 4) return 1.0;
+  const rates = getLiveRampingRates(strat.id, 0, bpm1, bpm2);
+  return rates.r1;
+}
+
+function applySelectedStrategy() {
+  const bpm1 = (songs[0].buffer && songs[0].bpm) ? songs[0].bpm : 128;
+  const bpm2 = (songs[1].buffer && songs[1].bpm) ? songs[1].bpm : 120;
+  const strat = resolveSpotifyStrategy(bpm1, bpm2);
+
+  let len0 = sharedDurationSec;
+  let len1 = sharedDurationSec;
+
+  if (activePhraseBeats !== null) {
+    const numBeats = activePhraseBeats;
+    if (strat.id === 1 || strat.id === 2) {
+      // Strategy 1 (Continuous Ramp) & Strategy 2 (Target Average):
+      // Both songs cover exactly numBeats across the transition window
+      const targetBpm = (bpm1 + bpm2) / 2;
+      sharedDurationSec = (numBeats * 60) / targetBpm;
+      len0 = (numBeats * 60) / bpm1;
+      len1 = (numBeats * 60) / bpm2;
+    } else if (strat.id === 3) {
+      // Strategy 3: Integer Multiple Alignment (2:1 Half/Double-Time)
+      const ratio = bpm1 / bpm2;
+      const mult = ratio >= 1.5 ? 0.5 : (ratio <= 0.75 ? 2.0 : 1.0);
+      sharedDurationSec = (numBeats * 60) / bpm1;
+      len0 = sharedDurationSec;
+      len1 = sharedDurationSec * (bpm1 / (bpm2 * mult));
+    } else if (strat.id === 4) {
+      // Strategy 4: Radio Crossfade (1.0x Native Speeds - No Warp)
+      sharedDurationSec = (numBeats * 60) / bpm1;
+      len0 = sharedDurationSec;
+      len1 = sharedDurationSec;
+    } else {
+      // Standard Club DJ Beatmatch (Deck 2 matched to Deck 1)
+      sharedDurationSec = (numBeats * 60) / bpm1;
+      len0 = sharedDurationSec;
+      len1 = sharedDurationSec * (bpm1 / bpm2);
+    }
+  } else {
+    // Duration in seconds is fixed: scale selections so playhead and audio finish together
+    if (strat.id === 1 || strat.id === 2) {
+      const targetBpm = (bpm1 + bpm2) / 2;
+      len0 = sharedDurationSec * (targetBpm / bpm1);
+      len1 = sharedDurationSec * (targetBpm / bpm2);
+    } else if (strat.id === 3) {
+      const ratio = bpm1 / bpm2;
+      const mult = ratio >= 1.5 ? 0.5 : (ratio <= 0.75 ? 2.0 : 1.0);
+      len0 = sharedDurationSec;
+      len1 = sharedDurationSec * (bpm1 / (bpm2 * mult));
+    } else if (strat.id === 4) {
+      len0 = sharedDurationSec;
+      len1 = sharedDurationSec;
+    } else {
+      const rate2 = (beatmatching && bpm1 && bpm2) ? (bpm1 / bpm2) : 1.0;
+      len0 = sharedDurationSec;
+      len1 = sharedDurationSec * rate2;
+    }
+  }
+
+  if (songs[0].buffer) {
+    songs[0].sel.len = len0;
+    const minStart0 = -songs[0].sel.len + 0.5;
+    const maxStart0 = songs[0].duration - 0.5;
+    songs[0].sel.start = clamp(songs[0].sel.start, minStart0, maxStart0);
+  }
+  if (songs[1].buffer) {
+    songs[1].sel.len = len1;
+    const minStart1 = -songs[1].sel.len + 0.5;
+    const maxStart1 = songs[1].duration - 0.5;
+    songs[1].sel.start = clamp(songs[1].sel.start, minStart1, maxStart1);
+  }
+
+  // Clear detail caches so waveforms re-render at their new durations
+  if (songs[0]) songs[0].detailCache = null;
+  if (songs[1]) songs[1].detailCache = null;
+
+  // Update beatmatch tempo ratio if currently playing
+  if (beatmatching && (transport === "playing" || transport === "fullMix")) {
+    const rates = getLiveRampingRates(strat.id, 0, bpm1, bpm2);
+    mixState.rate0 = rates.r0;
+    mixState.rate2 = rates.r1;
+    if (songs[0].nodes && songs[0].nodes.src) songs[0].nodes.src.playbackRate.value = rates.r0;
+    if (songs[1].nodes && songs[1].nodes.src) songs[1].nodes.src.playbackRate.value = rates.r1;
+  }
+
+  // Update duration button highlights
+  document.querySelectorAll(".dur-btn").forEach(btn => {
+    const s = parseFloat(btn.dataset.sec);
+    btn.classList.toggle("active", activePhraseBeats === null && Math.abs(s - sharedDurationSec) < 0.25);
+  });
+
+  // Auto-align downbeats if beatmatching is active
+  if (beatmatching && songs[0].buffer && songs[1].buffer && strat.id !== 4) {
+    alignBeats();
+  } else {
+    updatePhaseIndicator();
+    markDraw();
+  }
+}
+
+function getPhaseOffsetMs() {
+  if (!songs[0].buffer || !songs[1].buffer || !songs[0].beats.length || !songs[1].beats.length) return null;
+  const t1 = songs[0].sel.start;
+  const t2 = songs[1].sel.start;
+
+  const b1 = songs[0].beats.find(t => t >= t1) || t1;
+  const b2 = songs[1].beats.find(t => t >= t2) || t2;
+
+  const strat = resolveSpotifyStrategy(songs[0].bpm, songs[1].bpm);
+  const bpm1 = (songs[0].buffer && songs[0].bpm) ? songs[0].bpm : 128;
+  const bpm2 = (songs[1].buffer && songs[1].bpm) ? songs[1].bpm : 120;
+
+  let r0 = 1.0, r1 = 1.0;
+  if (beatmatching) {
+    const rates = getLiveRampingRates(strat.id, 0, bpm1, bpm2);
+    r0 = rates.r0;
+    r1 = rates.r1;
+  }
+
+  const effBpm = bpm1 * r0;
+  const beatPeriod = 60 / (effBpm || 128); // synchronized playback beat period
+
+  // Playback time into the transition
+  const p1 = (b1 - t1) / r0;
+  const p2 = (b2 - t2) / r1;
+
+  const phase1 = ((p1 % beatPeriod) + beatPeriod) % beatPeriod;
+  const phase2 = ((p2 % beatPeriod) + beatPeriod) % beatPeriod;
+
+  let diff = Math.abs(phase1 - phase2);
+  if (diff > beatPeriod / 2) diff = beatPeriod - diff;
+  const offsetMs = Math.round(diff * 1000);
+  return offsetMs;
+}
+
+function alignBeats() {
+  if (!songs[0].buffer || !songs[1].buffer) return;
+  if (!songs[0].beats.length || !songs[1].beats.length) return;
+
+  const b1Arr = songs[0].beats;
+  const b2Arr = songs[1].beats;
+  const selStart1 = songs[0].sel.start;
+  const selStart2 = songs[1].sel.start;
+
+  const strat = resolveSpotifyStrategy(songs[0].bpm, songs[1].bpm);
+  const bpm1 = (songs[0].buffer && songs[0].bpm) ? songs[0].bpm : 128;
+  const bpm2 = (songs[1].buffer && songs[1].bpm) ? songs[1].bpm : 120;
+
+  let r0 = 1.0, r1 = 1.0;
+  if (beatmatching) {
+    const rates = getLiveRampingRates(strat.id, 0, bpm1, bpm2);
+    r0 = rates.r0;
+    r1 = rates.r1;
+  }
+
+  // Find nearest downbeat in Song 1 at or after selection start
+  const downbeats1 = b1Arr.filter((_, idx) => ((idx - (songs[0].barOffset || 0)) % 4 + 4) % 4 === 0);
+  const targetDb1 = downbeats1.find(t => t >= selStart1) || b1Arr.find(t => t >= selStart1) || selStart1;
+  const playOffset1 = (targetDb1 - selStart1) / r0; // real playback time until targetDb1
+
+  // In Song 2 audio buffer time, playOffset1 is scaled by r1:
+  const bufferOffset2 = playOffset1 * r1;
+
+  // Find nearest downbeat in Song 2
+  const downbeats2 = b2Arr.filter((_, idx) => ((idx - (songs[1].barOffset || 0)) % 4 + 4) % 4 === 0);
+  const targetDb2Arr = downbeats2.length > 0 ? downbeats2 : b2Arr;
+  let bestDb2 = targetDb2Arr[0];
+  let minDiff = Infinity;
+  for (const tb of targetDb2Arr) {
+    const diff = Math.abs(tb - (selStart2 + bufferOffset2));
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestDb2 = tb;
+    }
+  }
+
+  // Shift Song 2 so its kick drum strikes at the exact same audio millisecond (Δt = 0.0 ms)!
+  const newStart2 = bestDb2 - bufferOffset2;
+  const minStart2 = -songs[1].sel.len + 0.5;
+  const maxStart2 = songs[1].duration - 0.5;
+  songs[1].sel.start = clamp(newStart2, minStart2, maxStart2);
+
+  updatePhaseIndicator();
+  markDraw();
+}
+
+function nudgeBar(dir) {
+  if (!songs[1].buffer) return;
+  const beatLen = 60 / (songs[1].bpm || 128);
+  const barLen = beatLen * 4;
+  const minStart = -songs[1].sel.len + 0.5;
+  const maxStart = songs[1].duration - 0.5;
+  songs[1].sel.start = clamp(songs[1].sel.start + dir * barLen, minStart, maxStart);
+  updatePhaseIndicator();
+  markDraw();
+}
+
+function updatePhaseIndicator() {
+  const badge = $("phaseStatus");
+  const alignBtn = $("alignBeatsBtn");
+  if (!badge) return;
+  if (!songs[0].buffer || !songs[1].buffer || !songs[0].beats.length || !songs[1].beats.length) {
+    badge.className = "seam-status badge-locked";
+    badge.textContent = "BEAT ALIGNMENT GUIDE";
+    return;
+  }
+
+  const offsetMs = getPhaseOffsetMs();
+  if (offsetMs === null) return;
+
+  if (offsetMs <= 18) {
+    badge.className = "seam-status badge-locked";
+    badge.innerHTML = "● BEATS LOCKED (Δt = " + offsetMs + "ms)";
+    if (alignBtn) alignBtn.classList.remove("pulse-glow");
+  } else {
+    badge.className = "seam-status badge-drift";
+    badge.innerHTML = "Phase Offset: +" + offsetMs + "ms";
+    if (alignBtn) alignBtn.classList.add("pulse-glow");
+  }
+
+  // Update tempo badge
+  const tempoBadge = $("tempoBadge");
+  if (tempoBadge) {
+    if (beatmatching) {
+      const ratio = getEffectiveTempoRatio(songs[0].bpm, songs[1].bpm);
+      const pct = Math.round((ratio - 1) * 1000) / 10;
+      const sign = pct >= 0 ? "+" : "";
+      tempoBadge.textContent = Math.round(songs[0].bpm) + " → " + Math.round(songs[1].bpm) + " BPM (" + sign + pct + "%)";
+      tempoBadge.style.display = "inline";
+    } else {
+      tempoBadge.textContent = "Original 1.0x Speeds (Crossfade)";
+      tempoBadge.style.display = "inline";
+    }
+  }
+
+  // Update Camelot Harmonic Mixing Badge (from smixs/dj-mix)
+  const harmBadge = $("harmonicStatus");
+  if (harmBadge) {
+    if (songs[0].buffer && songs[1].buffer) {
+      const harm = getHarmonicMatch(songs[0].key, songs[1].key);
+      harmBadge.className = "seam-status " + harm.cls;
+      harmBadge.textContent = harm.text;
+      harmBadge.style.display = "inline-flex";
+    } else {
+      harmBadge.className = "seam-status badge-locked";
+      harmBadge.textContent = "HARMONIC: LOAD 2 TRACKS";
+    }
+  }
+
+  // Update Spotify Automix Strategy Badge
+  const stratBadge = $("strategyBadge");
+  if (stratBadge) {
+    if (songs[0].buffer && songs[1].buffer) {
+      const strat = resolveSpotifyStrategy(songs[0].bpm, songs[1].bpm);
+      stratBadge.textContent = "⚡ " + strat.short;
+      stratBadge.title = strat.name;
+      stratBadge.className = "seam-status " + (strat.id === 4 ? "badge-drift" : "badge-locked");
+      stratBadge.style.display = "inline-flex";
+    } else {
+      stratBadge.style.display = "none";
+    }
+  }
+}
+
+function setPhraseLengthBeats(beats) {
+  activePhraseBeats = beats;
+  applySelectedStrategy();
+
+  // Highlight buttons
+  document.querySelectorAll(".phrase-btn").forEach(btn => {
+    btn.classList.toggle("active", parseInt(btn.dataset.beats, 10) === beats);
+  });
+  document.querySelectorAll(".dur-btn").forEach(btn => btn.classList.remove("active"));
+}
+
+/* ------------------------------------------------------------
+   Draw Overview Waveform (Full song with draggable selection overlay)
+------------------------------------------------------------ */
+function drawOverview(i) {
+  const song = songs[i];
+  const cv = $("waveOverview" + i);
+  const H = 72;
+  const g = setupCanvas(cv, H);
+  const W = cv.clientWidth;
+  const mid = H / 2;
+  g.clearRect(0, 0, W, H);
+  if (!song.buffer) return;
+
+  if (!song.peaks || song.peaksW !== Math.round(W)) {
+    computePeaks(song, Math.round(W));
+  }
+
+  const pxPerSec = W / song.duration;
+  const selA = song.sel.start * pxPerSec;
+  const selB = (song.sel.start + song.sel.len) * pxPerSec;
+
+  // Render 3-band Spotify Waveform with Power Curves (0.55 Bass, 0.80 Mids, 1.80 Highs, White Spine)
+  let maxL = 0.001, maxM = 0.001, maxH = 0.001;
+  for (let px = 0; px < W; px++) {
+    const l = song.peaks.lo[px] ? Math.max(Math.abs(song.peaks.lo[px].min), Math.abs(song.peaks.lo[px].max)) : 0;
+    const m = song.peaks.mid[px] ? Math.max(Math.abs(song.peaks.mid[px].min), Math.abs(song.peaks.mid[px].max)) : 0;
+    const h = song.peaks.hi[px] ? Math.max(Math.abs(song.peaks.hi[px].min), Math.abs(song.peaks.hi[px].max)) : 0;
+    if (l > maxL) maxL = l;
+    if (m > maxM) maxM = m;
+    if (h > maxH) maxH = h;
+  }
+
+  const maxHalfH = mid * 0.94;
+  for (let px = 0; px < W; px++) {
+    const l = song.peaks.lo[px] ? Math.max(Math.abs(song.peaks.lo[px].min), Math.abs(song.peaks.lo[px].max)) : 0;
+    const m = song.peaks.mid[px] ? Math.max(Math.abs(song.peaks.mid[px].min), Math.abs(song.peaks.mid[px].max)) : 0;
+    const h = song.peaks.hi[px] ? Math.max(Math.abs(song.peaks.hi[px].min), Math.abs(song.peaks.hi[px].max)) : 0;
+    if (l === 0 && m === 0 && h === 0) continue;
+
+    const normL = clamp(l / maxL, 0, 1);
+    const normM = clamp(m / maxM, 0, 1);
+    const normH = clamp(h / maxH, 0, 1);
+
+    const T = Math.pow(normL, 0.55);
+    const gVal = Math.pow(normM, 0.80);
+    const S = Math.pow(normH, 1.80);
+
+    const hH = S * maxHalfH;
+    if (hH > 0.5) {
+      g.fillStyle = "rgba(56, 189, 248, 0.75)";
+      g.fillRect(px, Math.round(mid - hH), 1, Math.max(1, Math.round(hH * 2)));
+    }
+    const mH = gVal * maxHalfH * 0.92;
+    if (mH > 0.5) {
+      g.fillStyle = "rgba(245, 158, 11, 0.65)";
+      g.fillRect(px, Math.round(mid - mH), 1, Math.max(1, Math.round(mH * 2)));
+    }
+    const lH = T * maxHalfH * 0.85;
+    if (lH > 0.5) {
+      g.fillStyle = (i === 0) ? "rgba(122, 198, 255, 0.88)" : "rgba(234, 156, 30, 0.88)";
+      g.fillRect(px, Math.round(mid - lH), 1, Math.max(1, Math.round(lH * 2)));
+    }
+    const spine = Math.min(T, gVal, S);
+    const spineH = spine * maxHalfH * 0.72;
+    if (spineH > 1.2) {
+      g.fillStyle = "rgba(255, 255, 255, 0.95)";
+      g.fillRect(px, Math.round(mid - spineH), 1, Math.max(1, Math.round(spineH * 2)));
+    }
+  }
+
+  // Grey out regions outside selection
+  g.fillStyle = "rgba(18, 16, 14, 0.78)";
+  if (selA > 0) g.fillRect(0, 0, Math.min(W, selA), H);
+  if (selB < W) g.fillRect(Math.max(0, selB), 0, W - Math.max(0, selB), H);
+
+  // Beat tick marks (every 4th beat accented)
+  if (song.beats.length) {
+    for (let k = 0; k < song.beats.length; k++) {
+      const x = song.beats[k] * pxPerSec;
+      if (x > W) break;
+      const down = k % 4 === 0;
+      g.strokeStyle = down ? "rgba(255, 183, 77, 0.75)" : "rgba(237, 230, 218, 0.25)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(Math.round(x) + 0.5, down ? 3 : 8);
+      g.lineTo(Math.round(x) + 0.5, down ? 12 : 13);
+      g.stroke();
+    }
+  }
+
+  // Selection box with transparent white overlay and border
+  const boxX = Math.max(0, selA);
+  const boxW = Math.min(W, selB) - boxX;
+  if (boxW > 0) {
+    g.fillStyle = "rgba(255, 255, 255, 0.12)";
+    g.fillRect(boxX, 0, boxW, H);
+  }
+  g.strokeStyle = COLS.accent;
+  g.lineWidth = 1.5;
+  g.strokeRect(selA + 0.75, 0.75, Math.max(2, selB - selA - 1.5), H - 1.5);
+
+  // Edge drag handles with hover highlight
+  const isHoverLeft  = (hoverOverview.i === i && hoverOverview.handle === "left");
+  const isHoverRight = (hoverOverview.i === i && hoverOverview.handle === "right");
+
+  // Left handle (pinned to canvas if overhanging)
+  const handleLX = clamp(selA, 3, W - 3);
+  g.fillStyle = isHoverLeft ? "#ffffff" : COLS.accent;
+  g.beginPath();
+  g.roundRect(handleLX - (isHoverLeft ? 3 : 2), mid - 14, (isHoverLeft ? 6 : 4), 28, 2);
+  g.fill();
+
+  // Right handle (pinned to canvas if overhanging)
+  const handleRX = clamp(selB, 3, W - 3);
+  g.fillStyle = isHoverRight ? "#ffffff" : COLS.accent;
+  g.beginPath();
+  g.roundRect(handleRX - (isHoverRight ? 3 : 2), mid - 14, (isHoverRight ? 6 : 4), 28, 2);
+  g.fill();
+
+  // Duration pill badge on top of selection box (stays within visible canvas)
+  g.font = "bold 10px Consolas, monospace";
+  let durLabel = song.sel.len.toFixed(1) + "s";
+  if (selA < 0) durLabel += " ◀pre";
+  else if (selB > W) durLabel += " post▶";
+  const badgeW = g.measureText(durLabel).width + 8;
+  const badgeX = clamp((selA + selB) / 2 - badgeW / 2, 6, W - badgeW - 6);
+  g.fillStyle = "rgba(18, 16, 14, 0.88)";
+  g.beginPath();
+  g.roundRect(badgeX, 3, badgeW, 14, 3);
+  g.fill();
+  g.strokeStyle = COLS.accent;
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = COLS.accent;
+  g.fillText(durLabel, badgeX + 4, 13);
+
+  // Playhead during playback
+  const t = getDeckPlayhead(i);
+  if (t !== null && t >= 0 && t <= song.duration) {
+    const playX = Math.round(t * pxPerSec) + 0.5;
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(playX, 0);
+    g.lineTo(playX, H);
+    g.stroke();
+
+    g.fillStyle = "#ffffff";
+    g.beginPath();
+    g.arc(playX, 5, 3.5, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+/* ------------------------------------------------------------
+   Draw Detail Waveform (Zoomed 2/4/8/16 beats + Curve Editor)
+------------------------------------------------------------ */
+function getPointValueLabel(lane, y) {
+  if (lane === "volume") {
+    if (y <= 0.01) return "Mute (-inf)";
+    if (Math.abs(y - 0.5) < 0.02) return "100% (0 dB)";
+    if (y < 0.5) {
+      const pct = Math.round((y / 0.5) * 100);
+      const db = Math.round(20 * Math.log10(y / 0.5));
+      return pct + "% (" + db + " dB)";
+    }
+    const db = "+" + Math.round((y - 0.5) * 12) + " dB";
+    return Math.round((y / 0.5) * 100) + "% (" + db + ")";
+  }
+  if (lane === "eq") {
+    if (Math.abs(y - 0.5) < 0.02) return "Bass (Kick Drum): Flat (0 dB)";
+    if (y < 0.5) {
+      const db = Math.round((y - 0.5) * 2 * 32);
+      return "Bass (Kick Drum): " + (y < 0.05 ? "Muted / Kill" : db + " dB");
+    }
+    const db = "+" + Math.round((y - 0.5) * 2 * 6);
+    return "Bass (Kick Drum): " + db + " dB";
+  }
+  if (lane === "filter") {
+    if (Math.abs(y - 0.5) < 0.02) return "Filter: Crystal-Clear (Open)";
+    if (y < 0.5) {
+      const hz = Math.round(Math.pow(10, lerp(Math.log10(100), Math.log10(20000), y / 0.5)));
+      return "Filter: Underwater / Muffled (" + hz + " Hz)";
+    }
+    const hz = Math.round(Math.pow(10, lerp(Math.log10(20), Math.log10(4000), (y - 0.5) / 0.5)));
+    return "Filter: Highpass Bright (" + hz + " Hz)";
+  }
+  return "";
+}
+
+function drawDetail(i) {
+  const song = songs[i];
+  const cv = $("waveDetail" + i);
+  const H = 140;
+  const g = setupCanvas(cv, H);
+  const W = cv.clientWidth;
+  const mid = H / 2;
+  g.clearRect(0, 0, W, H);
+
+  if (!song.buffer) {
+    g.fillStyle = COLS.faint;
+    g.font = "12px Consolas, monospace";
+    g.fillText("load song to display transition section", 16, mid + 4);
+    return;
+  }
+
+  const selStart = song.sel.start;
+  const selLen   = song.sel.len;
+  const sr       = song.buffer.sampleRate;
+  const ch0      = song.buffer.getChannelData(0);
+  const ch1      = song.buffer.numberOfChannels > 1 ? song.buffer.getChannelData(1) : ch0;
+
+  // Zoomed waveform rendering directly from audio buffer with sample-accurate pixel mapping and 60fps caching
+  const startIdx = Math.floor(selStart * sr);
+  const totalIdx = Math.floor(selLen * sr);
+
+  if (!song.detailCache) {
+    song.detailCache = { canvas: document.createElement("canvas"), selStart: null, selLen: null, W: 0, H: 0 };
+  }
+  const cache = song.detailCache;
+  const needsRebake = !cache.canvas.width || cache.selStart !== selStart || cache.selLen !== selLen || cache.W !== W || cache.H !== H;
+
+  if (needsRebake) {
+    cache.canvas.width = W;
+    cache.canvas.height = H;
+    const cg = cache.canvas.getContext("2d");
+    cg.clearRect(0, 0, W, H);
+
+    // Compute zoomed bands (Spotify ThreeBandWaveform with Non-Linear Power Curves)
+    const aLo = Math.exp(-2 * Math.PI * 250 / sr);
+    const aH  = Math.exp(-2 * Math.PI * 4000 / sr);
+    let sLo = 0, sH = 0;
+
+    const loPeaks  = new Float32Array(W);
+    const midPeaks = new Float32Array(W);
+    const hiPeaks  = new Float32Array(W);
+
+    let maxL = 0.001, maxM = 0.001, maxH = 0.001;
+
+    for (let px = 0; px < W; px++) {
+      const from = startIdx + Math.floor((px / W) * totalIdx);
+      const to   = startIdx + Math.floor(((px + 1) / W) * totalIdx);
+
+      if (to <= 0 || from >= song.buffer.length) continue;
+
+      const safeFrom = Math.max(0, from);
+      const safeTo   = Math.min(song.buffer.length, to);
+
+      let lMax = 0, mMax = 0, hMax = 0;
+      for (let n = safeFrom; n < safeTo; n++) {
+        const v = (ch0[n] + ch1[n]) * 0.5;
+        sLo = aLo * sLo + (1 - aLo) * v;
+        sH  = aH  * sH  + (1 - aH)  * v;
+        const l = Math.abs(sLo);
+        const m = Math.abs(sH - sLo);
+        const h = Math.abs(v - sH);
+        if (l > lMax) lMax = l;
+        if (m > mMax) mMax = m;
+        if (h > hMax) hMax = h;
+      }
+
+      loPeaks[px]  = lMax;
+      midPeaks[px] = mMax;
+      hiPeaks[px]  = hMax;
+
+      if (lMax > maxL) maxL = lMax;
+      if (mMax > maxM) maxM = mMax;
+      if (hMax > maxH) maxH = hMax;
+    }
+
+    // Spotify's ThreeBandWaveform Non-Linear Power Renderer (xpui-modules.js reverse-engineered):
+    // 1. Lows (Amber Body) -> Exponent 0.55 (Square-root dynamic expansion for thick punchy bass)
+    // 2. Mids (Vocals / Synths) -> Exponent 0.80
+    // 3. Highs (Royal Blue Peaks) -> Exponent 1.80 (Aggressive transient squishing so only sharp drum hits pop out)
+    // 4. Overlap (Lows & Mids & Highs) -> Math.min creates luminous white core spine
+    const maxHalfH = mid * 0.94;
+
+    for (let px = 0; px < W; px++) {
+      const l = loPeaks[px], m = midPeaks[px], h = hiPeaks[px];
+      if (l === 0 && m === 0 && h === 0) continue;
+
+      const normL = clamp(l / maxL, 0, 1);
+      const normM = clamp(m / maxM, 0, 1);
+      const normH = clamp(h / maxH, 0, 1);
+
+      const T = Math.pow(normL, 0.55); // Lows (0.55 power curve)
+      const g = Math.pow(normM, 0.80); // Mids (0.80 power curve)
+      const S = Math.pow(normH, 1.80); // Highs (1.80 power curve)
+
+      // Layer 1: Highs / Transients (Crisp Royal / Sky Blue Spikes)
+      const hH = S * maxHalfH;
+      if (hH > 0.5) {
+        cg.fillStyle = "rgba(56, 189, 248, 0.80)";
+        cg.fillRect(px, Math.round(mid - hH), 1, Math.max(1, Math.round(hH * 2)));
+      }
+
+      // Layer 2: Mids / Vocals (Warm Rich Amber / Orange)
+      const mH = g * maxHalfH * 0.92;
+      if (mH > 0.5) {
+        cg.fillStyle = "rgba(245, 158, 11, 0.65)";
+        cg.fillRect(px, Math.round(mid - mH), 1, Math.max(1, Math.round(mH * 2)));
+      }
+
+      // Layer 3: Lows / Bass Body (Solid Punch Core with Deck Accent)
+      const lH = T * maxHalfH * 0.85;
+      if (lH > 0.5) {
+        cg.fillStyle = (i === 0) ? "rgba(122, 198, 255, 0.90)" : "rgba(234, 156, 30, 0.92)";
+        cg.fillRect(px, Math.round(mid - lH), 1, Math.max(1, Math.round(lH * 2)));
+      }
+
+      // Layer 4: Spotify White Core Spine (Math.min Overlap of all 3 bands)
+      // Where low, mid, and high energy overlap simultaneously at transient attack
+      const spine = Math.min(T, g, S);
+      const spineH = spine * maxHalfH * 0.72;
+      if (spineH > 1.2) {
+        cg.fillStyle = "rgba(255, 255, 255, 0.96)";
+        cg.fillRect(px, Math.round(mid - spineH), 1, Math.max(1, Math.round(spineH * 2)));
+      }
+    }
+
+    cache.selStart = selStart;
+    cache.selLen = selLen;
+    cache.W = W;
+    cache.H = H;
+  }
+
+  // Blit pre-rendered waveform instantly in < 0.1ms at 60fps
+  g.drawImage(cache.canvas, 0, 0);
+
+  const secToPx = s => ((s - selStart) / selLen) * W;
+
+  // Out-of-bounds silence shading & boundary lines
+  if (selStart < 0) {
+    const startX = Math.round(secToPx(0)) + 0.5;
+    g.fillStyle = "rgba(0, 0, 0, 0.42)";
+    g.fillRect(0, 0, startX, H);
+    g.strokeStyle = "rgba(90, 167, 232, 0.85)";
+    g.lineWidth = 1.5;
+    g.setLineDash([4, 4]);
+    g.beginPath();
+    g.moveTo(startX, 0);
+    g.lineTo(startX, H);
+    g.stroke();
+    g.setLineDash([]);
+    g.font = "bold 9px Consolas, monospace";
+    g.fillStyle = "rgba(90, 167, 232, 0.9)";
+    g.fillText("◀ TRACK START (0:00)", Math.min(W - 120, startX + 6), 14);
+  }
+
+  if (selStart + selLen > song.duration) {
+    const endX = Math.round(secToPx(song.duration)) + 0.5;
+    g.fillStyle = "rgba(0, 0, 0, 0.42)";
+    g.fillRect(endX, 0, W - endX, H);
+    g.strokeStyle = "rgba(232, 141, 60, 0.85)";
+    g.lineWidth = 1.5;
+    g.setLineDash([4, 4]);
+    g.beginPath();
+    g.moveTo(endX, 0);
+    g.lineTo(endX, H);
+    g.stroke();
+    g.setLineDash([]);
+    g.font = "bold 9px Consolas, monospace";
+    g.fillStyle = "rgba(232, 141, 60, 0.9)";
+    g.fillText("TRACK END (" + fmtTime(song.duration) + ") ▶", Math.max(8, endX - 130), 14);
+  }
+
+  // Beat grid markings across the zoomed section (Spotify 4/4 Bar Architecture)
+  for (let k = 0; k < song.beats.length; k++) {
+    const tb = song.beats[k];
+    if (tb < selStart) continue;
+    if (tb > selStart + selLen) break;
+    const x = secToPx(tb);
+    const pxInt = Math.round(x);
+    const isDown = ((k - (song.barOffset || 0)) % 4 + 4) % 4 === 0;
+    const barNum = Math.floor((k - (song.barOffset || 0)) / 4) + 1;
+
+    if (isDown) {
+      // Downbeat: Bar 1 Kick Drum (Luminous vertical line with Bar Badge & Seam Bead)
+      const col = i === 0 ? "rgba(122, 198, 255, 0.9)" : "rgba(255, 183, 77, 0.9)";
+      g.strokeStyle = col;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(pxInt + 0.5, 0);
+      g.lineTo(pxInt + 0.5, H);
+      g.stroke();
+
+      // Bar Number Tag
+      g.font = "bold 9px Consolas, monospace";
+      g.fillStyle = col;
+      const tagY = (i === 0) ? 12 : H - 5;
+      g.fillText("BAR " + barNum, pxInt + 4, tagY);
+
+      // Luminous Alignment Bead at the Center Seam
+      g.fillStyle = col;
+      g.beginPath();
+      const seamY = (i === 0) ? H - 3.5 : 3.5;
+      g.arc(pxInt + 0.5, seamY, 3, 0, Math.PI * 2);
+      g.fill();
+    } else {
+      // Sub-beats 2, 3, 4: Clean subtle ticks
+      g.strokeStyle = "rgba(237, 230, 218, 0.22)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(pxInt + 0.5, 0);
+      g.lineTo(pxInt + 0.5, H);
+      g.stroke();
+
+      const beatNum = ((k - (song.barOffset || 0)) % 4 + 4) % 4 + 1;
+      g.font = "8px Consolas, monospace";
+      g.fillStyle = "rgba(237, 230, 218, 0.4)";
+      const tagY = (i === 0) ? 11 : H - 5;
+      g.fillText(String(beatNum), pxInt + 3, tagY);
+    }
+  }
+
+  // Center horizontal baseline (50% neutral line)
+  g.strokeStyle = "rgba(156, 147, 127, 0.28)";
+  g.lineWidth = 1;
+  g.setLineDash([4, 4]);
+  g.beginPath();
+  g.moveTo(0, mid + 0.5);
+  g.lineTo(W, mid + 0.5);
+  g.stroke();
+  g.setLineDash([]);
+
+  // Midpoint Downbeat / Bass Swap marker (Spotify 4-Bar Architecture)
+  const midX = Math.round(W * 0.5) + 0.5;
+  g.strokeStyle = "rgba(255, 202, 40, 0.35)";
+  g.lineWidth = 1;
+  g.setLineDash([3, 3]);
+  g.beginPath();
+  g.moveTo(midX, 0);
+  g.lineTo(midX, H);
+  g.stroke();
+  g.setLineDash([]);
+
+  if (activeLane === "eq" || activeLane === "all") {
+    g.font = "bold 8px Consolas, monospace";
+    g.fillStyle = "rgba(255, 202, 40, 0.70)";
+    g.fillText("⚡ BASS SWAP", midX + 4, (i === 0 ? 24 : H - 16));
+  }
+
+  // Automation Curves (volume, eq, filter)
+  const lanes = activeLane === "all" ? ["volume", "eq", "filter"] : [activeLane];
+  const showPoints = activeLane !== "all";
+  const Y = y => (1 - y) * (H - 28) + 14;
+
+  let activeTooltip = null;
+
+  for (const lane of lanes) {
+    const pts = song.lanes[lane];
+    const color = lane === "volume" ? COLS.vol : lane === "eq" ? COLS.eq : COLS.fil;
+
+    g.strokeStyle = color;
+    g.lineWidth = activeLane === "all" ? 1.5 : 2.5;
+    g.globalAlpha = activeLane === "all" ? 0.75 : 1;
+    g.beginPath();
+    for (let p = 0; p < pts.length; p++) {
+      const px = pts[p].x * W;
+      const py = Y(pts[p].y);
+      p === 0 ? g.moveTo(px, py) : g.lineTo(px, py);
+    }
+    g.stroke();
+    g.globalAlpha = 1;
+
+    // Control point handles
+    if (showPoints) {
+      for (let p = 0; p < pts.length; p++) {
+        const px = pts[p].x * W;
+        const py = Y(pts[p].y);
+        const pinned = (p === 0 || p === pts.length - 1);
+        const isHovered = (hoverState.song === i && hoverState.pt === p);
+        const isDragging = (dragCurve.song === i && dragCurve.pt === p);
+
+        // Halo on hover / drag
+        if (isHovered || isDragging) {
+          g.beginPath();
+          g.arc(px, py, 14, 0, 2 * Math.PI);
+          g.fillStyle = color;
+          g.globalAlpha = 0.28;
+          g.fill();
+          g.globalAlpha = 1;
+
+          // Tooltip data
+          activeTooltip = {
+            text: getPointValueLabel(lane, pts[p].y),
+            px,
+            py: py < 35 ? py + 26 : py - 18,
+            color
+          };
+        }
+
+        // Draw point handle
+        const r = (isHovered || isDragging) ? 8 : 6.5;
+        g.beginPath();
+        g.arc(px, py, r, 0, 2 * Math.PI);
+        g.fillStyle = pinned ? "#121110" : color;
+        g.fill();
+        g.lineWidth = pinned ? 2.5 : 2;
+        g.strokeStyle = pinned ? color : "#121110";
+        g.stroke();
+
+        // Inner anchor mark for pinned endpoints
+        if (pinned) {
+          g.fillStyle = color;
+          g.beginPath();
+          g.arc(px, py, 2.5, 0, 2 * Math.PI);
+          g.fill();
+        }
+      }
+    }
+  }
+
+  // Ghost point when hovering over line
+  if (showPoints && hoverState.song === i && hoverState.isLine && dragCurve.song === -1) {
+    const color = activeLane === "volume" ? COLS.vol : activeLane === "eq" ? COLS.eq : COLS.fil;
+    g.beginPath();
+    g.arc(hoverState.px, hoverState.py, 6, 0, 2 * Math.PI);
+    g.fillStyle = color;
+    g.globalAlpha = 0.55;
+    g.fill();
+    g.globalAlpha = 1;
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 1.5;
+    g.stroke();
+
+    activeTooltip = {
+      text: "+ Click to add point",
+      px: hoverState.px,
+      py: hoverState.py < 35 ? hoverState.py + 24 : hoverState.py - 16,
+      color: "#ffffff"
+    };
+  }
+
+  // Render Tooltip Badge
+  if (activeTooltip) {
+    g.font = "bold 11px Consolas, monospace";
+    const textWidth = g.measureText(activeTooltip.text).width;
+    const padX = 8, padY = 4;
+    const boxW = textWidth + padX * 2;
+    const boxH = 20;
+    const boxX = clamp(activeTooltip.px - boxW / 2, 6, W - boxW - 6);
+    const boxY = clamp(activeTooltip.py - boxH / 2, 4, H - boxH - 4);
+
+    g.fillStyle = "rgba(18, 16, 14, 0.92)";
+    g.beginPath();
+    g.roundRect(boxX, boxY, boxW, boxH, 4);
+    g.fill();
+    g.strokeStyle = activeTooltip.color;
+    g.lineWidth = 1;
+    g.stroke();
+
+    g.fillStyle = activeTooltip.color;
+    g.fillText(activeTooltip.text, boxX + padX, boxY + 14);
+  }
+
+  // Playhead indicator (locked 1:1 synchronization across both decks)
+  let playheadX = null;
+  const pt = getDeckPlayhead(i);
+  if (pt !== null && pt >= selStart && pt <= selStart + selLen) {
+    playheadX = Math.round(secToPx(pt)) + 0.5;
+  }
+
+  if (playheadX !== null) {
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(playheadX, 0);
+    g.lineTo(playheadX, H);
+    g.stroke();
+
+    // Luminous playhead bead meeting at the center seam
+    g.fillStyle = "#ffffff";
+    g.beginPath();
+    g.arc(playheadX, i === 0 ? H - 3 : 3, 3.5, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+/* ------------------------------------------------------------
+   Playhead & Playback Timing (Sample-Accurate Acoustic Sync)
+------------------------------------------------------------ */
+function getAcousticAudioTime() {
+  if (!audioCtx) return 0;
+  // Hardware DAC & WASAPI buffer latency compensation:
+  // Ensures the visual playhead hits the transient spike at the exact instant the sound emerges from your physical speakers
+  const latency = (audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0);
+  return Math.max(0, audioCtx.currentTime - latency);
+}
+
+function getDeckPlayhead(i) {
+  const acousticNow = getAcousticAudioTime();
+
+  if (transport === "playing") {
+    const song = songs[i];
+    if (!song.nodes) return null;
+    const rate = song.nodes.rate || 1;
+    const elapsedContext = acousticNow - song.nodes.startedAt;
+    const transDur = mixState.transDur || songs[0].sel.len || song.sel.len;
+    if (elapsedContext < -0.05 || elapsedContext > transDur + 0.1) return null;
+    return song.sel.start + Math.max(0, elapsedContext) * rate;
+  }
+  if (transport === "fullMix" || transport === "fullMixPaused") {
+    const now = (transport === "fullMixPaused") ? mixState.pausedAtAudioTime : acousticNow;
+    const elapsedTotal = now - mixState.startedAt;
+    if (i === 0) {
+      if (elapsedTotal < -0.05) return null;
+      if (elapsedTotal > mixState.leadIn + mixState.transDur + 0.1) return null;
+      const rate0 = mixState.rate0 || 1.0;
+      if (elapsedTotal <= mixState.leadIn) {
+        return (songs[0].sel.start - mixState.leadIn) + Math.max(0, elapsedTotal);
+      } else {
+        const elapsedInTrans = elapsedTotal - mixState.leadIn;
+        return songs[0].sel.start + elapsedInTrans * rate0;
+      }
+    } else {
+      if (elapsedTotal < mixState.leadIn) return null;
+      const elapsedSinceStart = elapsedTotal - mixState.leadIn;
+      let trackPos;
+      if (mixState.rate2 && mixState.rate2 !== 1.0) {
+        if (elapsedSinceStart <= mixState.transDur) {
+          trackPos = songs[1].sel.start + elapsedSinceStart * mixState.rate2;
+        } else {
+          const transEndPos = songs[1].sel.start + mixState.transDur * mixState.rate2;
+          const postElapsed = elapsedSinceStart - mixState.transDur;
+          const rampSec = 3.0;
+          if (postElapsed < rampSec) {
+            const avgRate = (mixState.rate2 + 1.0) / 2;
+            trackPos = transEndPos + postElapsed * avgRate;
+          } else {
+            const rampDist = rampSec * ((mixState.rate2 + 1.0) / 2);
+            trackPos = transEndPos + rampDist + (postElapsed - rampSec);
+          }
+        }
+      } else {
+        trackPos = songs[1].sel.start + elapsedSinceStart;
+      }
+      if (trackPos > songs[1].duration + 1.0) return null;
+      return trackPos;
+    }
+  }
+  if (transport === "fullTrack" && fullTrack.i === i) {
+    const elapsed = acousticNow - fullTrack.startedAt;
+    const pos = fullTrack.startPos + Math.max(0, elapsed);
+    if (pos > songs[i].duration) {
+      stopFullTrack();
+      return null;
+    }
+    return pos;
+  }
+  if (transport === "fullTrackPaused" && fullTrack.i === i) {
+    return fullTrack.pausedAt;
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------
+   Selection Dragging, Resizing & Mutual Beat Scaling
+------------------------------------------------------------ */
+const dragSel = { i: -1, grabOff: 0, mode: null, fixedStart: 0, fixedEnd: 0, active: false };
+let hoverOverview = { i: -1, handle: null };
+let pointerStart = { x: 0, y: 0, t: 0 };
+let hasMoved = false;
+
+function updateOverviewHover(i, e) {
+  if (dragSel.active) return;
+  const song = songs[i];
+  if (!song.buffer) return;
+  const cv = $("waveOverview" + i);
+  const r = cv.getBoundingClientRect();
+  const px = e.clientX - r.left;
+  const pxPerSec = r.width / song.duration;
+  const selA = song.sel.start * pxPerSec;
+  const selB = (song.sel.start + song.sel.len) * pxPerSec;
+  const handleLX = clamp(selA, 3, r.width - 3);
+  const handleRX = clamp(selB, 3, r.width - 3);
+
+  if (Math.abs(px - handleLX) <= 8) {
+    if (hoverOverview.i !== i || hoverOverview.handle !== "left") {
+      hoverOverview = { i, handle: "left" };
+      markDraw();
+    }
+    cv.style.cursor = "ew-resize";
+  } else if (Math.abs(px - handleRX) <= 8) {
+    if (hoverOverview.i !== i || hoverOverview.handle !== "right") {
+      hoverOverview = { i, handle: "right" };
+      markDraw();
+    }
+    cv.style.cursor = "ew-resize";
+  } else if (px >= Math.max(0, selA) && px <= Math.min(r.width, selB)) {
+    if (hoverOverview.i !== i || hoverOverview.handle !== "body") {
+      hoverOverview = { i, handle: "body" };
+      markDraw();
+    }
+    cv.style.cursor = "grab";
+  } else {
+    if (hoverOverview.i !== -1) {
+      hoverOverview = { i: -1, handle: null };
+      markDraw();
+    }
+    cv.style.cursor = "pointer";
+  }
+}
+
+function startSelDrag(i, e) {
+  if (transport === "playing" || transport === "fullMix") return;
+  const song = songs[i];
+  if (!song.buffer) return;
+
+  // If currently auditioning full track on this deck, click seeks playback
+  if (transport === "fullTrack" && fullTrack.i === i) {
+    const cv = $("waveOverview" + i);
+    const r = cv.getBoundingClientRect();
+    const t = clamp((e.clientX - r.left) / r.width, 0, 1) * song.duration;
+    playFullTrack(i, t);
+    return;
+  }
+
+  const cv = $("waveOverview" + i);
+  const r = cv.getBoundingClientRect();
+  const px = e.clientX - r.left;
+  const pxPerSec = r.width / song.duration;
+  const selA = song.sel.start * pxPerSec;
+  const selB = (song.sel.start + song.sel.len) * pxPerSec;
+  const t = (px / r.width) * song.duration;
+
+  pointerStart = { x: e.clientX, y: e.clientY, t };
+  hasMoved = false;
+
+  dragSel.i = i;
+  dragSel.active = true;
+
+  const handleLX = clamp(selA, 3, r.width - 3);
+  const handleRX = clamp(selB, 3, r.width - 3);
+
+  const minStart = -song.sel.len + 0.5;
+  const maxStart = song.duration - 0.5;
+
+  if (Math.abs(px - handleLX) <= 8) {
+    dragSel.mode = "resizeLeft";
+    dragSel.fixedEnd = song.sel.start + song.sel.len;
+    cv.style.cursor = "ew-resize";
+  } else if (Math.abs(px - handleRX) <= 8) {
+    dragSel.mode = "resizeRight";
+    dragSel.fixedStart = song.sel.start;
+    cv.style.cursor = "ew-resize";
+  } else if (px >= Math.max(0, selA) && px <= Math.min(r.width, selB)) {
+    dragSel.mode = "move";
+    dragSel.grabOff = t - song.sel.start;
+    cv.style.cursor = "grabbing";
+  } else {
+    // Click outside: jump transition window to clicked position (magnetic snap if active)
+    dragSel.mode = "move";
+    dragSel.grabOff = song.sel.len / 2;
+    let desired = t - song.sel.len / 2;
+    if (magneticSnap && beatmatching && !e.shiftKey && song.beats.length) {
+      let closest = desired;
+      let minD = 0.25;
+      for (let k = 0; k < song.beats.length; k++) {
+        const tb = song.beats[k];
+        const isDown = ((k - (song.barOffset || 0)) % 4 + 4) % 4 === 0;
+        const thresh = isDown ? 0.28 : 0.14;
+        const dist = Math.abs(tb - desired);
+        if (dist < thresh && dist < minD) {
+          minD = dist;
+          closest = tb;
+        }
+      }
+      desired = closest;
+    }
+    song.sel.start = clamp(desired, minStart, maxStart);
+    cv.style.cursor = "grabbing";
+    updatePhaseIndicator();
+    markDraw();
+  }
+}
+
+function moveSelDrag(e) {
+  if (!dragSel.active) return;
+  if (Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 4) {
+    hasMoved = true;
+  }
+  const song = songs[dragSel.i];
+  const cv = $("waveOverview" + dragSel.i);
+  const r = cv.getBoundingClientRect();
+  const t = ((e.clientX - r.left) / r.width) * song.duration;
+
+  const minStart = -song.sel.len + 0.5;
+  const maxStart = song.duration - 0.5;
+
+  if (dragSel.mode === "resizeRight") {
+    // Dragging right edge: extends/shrinks duration for both songs equally
+    activePhraseBeats = null;
+    document.querySelectorAll(".phrase-btn").forEach(b => b.classList.remove("active"));
+    const newLen = clamp(t - dragSel.fixedStart, 0.5, song.duration * 2);
+    const rate = (beatmatching && dragSel.i === 1) ? getEffectiveTempoRatio(songs[0].bpm, songs[1].bpm) : 1.0;
+    setSharedTransitionDuration(newLen / rate);
+  } else if (dragSel.mode === "resizeLeft") {
+    // Dragging left edge: extends/shrinks duration for both songs equally
+    activePhraseBeats = null;
+    document.querySelectorAll(".phrase-btn").forEach(b => b.classList.remove("active"));
+    const newStart = Math.min(t, dragSel.fixedEnd - 0.5);
+    const newLen = clamp(dragSel.fixedEnd - newStart, 0.5, song.duration * 2);
+    song.sel.start = dragSel.fixedEnd - newLen;
+    const rate = (beatmatching && dragSel.i === 1) ? getEffectiveTempoRatio(songs[0].bpm, songs[1].bpm) : 1.0;
+    setSharedTransitionDuration(newLen / rate);
+  } else if (dragSel.mode === "move") {
+    // Sliding the window position on this song (magnetic snap if active, or 100% free movement)
+    let desired = t - dragSel.grabOff;
+    if (magneticSnap && beatmatching && !e.shiftKey && song.beats.length) {
+      let closest = desired;
+      let minD = 0.22;
+      for (let k = 0; k < song.beats.length; k++) {
+        const tb = song.beats[k];
+        const isDown = ((k - (song.barOffset || 0)) % 4 + 4) % 4 === 0;
+        const thresh = isDown ? 0.25 : 0.12;
+        const dist = Math.abs(tb - desired);
+        if (dist < thresh && dist < minD) {
+          minD = dist;
+          closest = tb;
+        }
+      }
+      desired = closest;
+    }
+    song.sel.start = clamp(desired, minStart, maxStart);
+    updatePhaseIndicator();
+    markDraw();
+  }
+}
+
+function endSelDrag(e) {
+  dragSel.active = false;
+  dragSel.i = -1;
+  dragSel.mode = null;
+  markDraw();
+}
+
+function easeSelections() {
+  for (const song of songs) {
+    if (song.selTarget === null) continue;
+    song.sel.start = lerp(song.sel.start, song.selTarget, 0.35);
+    if (Math.abs(song.sel.start - song.selTarget) < 0.001) {
+      song.sel.start = song.selTarget;
+      song.selTarget = null;
+    }
+    markDraw();
+  }
+}
+
+/* ------------------------------------------------------------
+   Refined Curve Editor Interaction (Forgiving Hit Target & Drag)
+   - Large 18px hit radius for easy grabbing
+   - Start point at x=0, End point at x=1 pinned horizontally
+   - Click along line to insert point
+   - Smooth vertical and horizontal dragging for intermediate points
+   - Double-click to remove intermediate point
+------------------------------------------------------------ */
+const dragCurve = { song: -1, lane: null, pt: -1 };
+
+function getCurveLoc(songIdx, e) {
+  const cv = $("waveDetail" + songIdx);
+  const r = cv.getBoundingClientRect();
+  const H = 140;
+  const x = clamp((e.clientX - r.left) / r.width, 0, 1);
+  const y = clamp(1 - (e.clientY - r.top - 14) / (H - 28), 0, 1);
+  const px = e.clientX - r.left;
+  const py = e.clientY - r.top;
+  return { x, y, px, py, W: r.width, H };
+}
+
+function updateCurveHover(songIdx, e) {
+  if (activeLane === "all" || dragCurve.song !== -1) return;
+  const cv = $("waveDetail" + songIdx);
+  const song = songs[songIdx];
+  if (!song.buffer) return;
+
+  const pts = song.lanes[activeLane];
+  const loc = getCurveLoc(songIdx, e);
+  const Y = y => (1 - y) * (loc.H - 28) + 14;
+
+  // Check point proximity (large 18px hit radius)
+  for (let p = 0; p < pts.length; p++) {
+    const ptX = pts[p].x * loc.W;
+    const ptY = Y(pts[p].y);
+    if (Math.hypot(ptX - loc.px, ptY - loc.py) <= 18) {
+      hoverState.song = songIdx;
+      hoverState.pt = p;
+      hoverState.isLine = false;
+      hoverState.px = ptX;
+      hoverState.py = ptY;
+      cv.style.cursor = (p === 0 || p === pts.length - 1) ? "ns-resize" : "grab";
+      markDraw();
+      return;
+    }
+  }
+
+  // Check line proximity (14px tolerance to add point)
+  for (let s = 0; s < pts.length - 1; s++) {
+    const ax = pts[s].x * loc.W,     ay = Y(pts[s].y);
+    const bx = pts[s + 1].x * loc.W, by = Y(pts[s + 1].y);
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    const t = L2 > 0 ? clamp(((loc.px - ax) * dx + (loc.py - ay) * dy) / L2, 0, 1) : 0;
+    const projX = ax + t * dx;
+    const projY = ay + t * dy;
+    if (Math.hypot(projX - loc.px, projY - loc.py) <= 14) {
+      hoverState.song = songIdx;
+      hoverState.pt = -1;
+      hoverState.isLine = true;
+      hoverState.px = projX;
+      hoverState.py = projY;
+      cv.style.cursor = "copy";
+      markDraw();
+      return;
+    }
+  }
+
+  // Not near points or line
+  if (hoverState.song !== -1 || hoverState.pt !== -1 || hoverState.isLine) {
+    hoverState.song = -1;
+    hoverState.pt = -1;
+    hoverState.isLine = false;
+    cv.style.cursor = "crosshair";
+    markDraw();
+  }
+}
+
+function startCurveDrag(songIdx, e) {
+  if (activeLane === "all") return;
+  const song = songs[songIdx];
+  if (!song.buffer) return;
+  const pts = song.lanes[activeLane];
+  const loc = getCurveLoc(songIdx, e);
+  const Y = y => (1 - y) * (loc.H - 28) + 14;
+
+  // 1. Grab existing point? (18px hit radius)
+  for (let p = 0; p < pts.length; p++) {
+    const ptX = pts[p].x * loc.W;
+    const ptY = Y(pts[p].y);
+    if (Math.hypot(ptX - loc.px, ptY - loc.py) <= 18) {
+      dragCurve.song = songIdx;
+      dragCurve.lane = activeLane;
+      dragCurve.pt = p;
+      $("waveDetail" + songIdx).style.cursor = "grabbing";
+      markDraw();
+      return;
+    }
+  }
+
+  // 2. Click along line to insert new point (14px tolerance)
+  for (let s = 0; s < pts.length - 1; s++) {
+    const ax = pts[s].x * loc.W,     ay = Y(pts[s].y);
+    const bx = pts[s + 1].x * loc.W, by = Y(pts[s + 1].y);
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    const t = L2 > 0 ? clamp(((loc.px - ax) * dx + (loc.py - ay) * dy) / L2, 0, 1) : 0;
+    if (Math.hypot(ax + t * dx - loc.px, ay + t * dy - loc.py) <= 14) {
+      const newPt = { x: clamp(loc.x, pts[s].x + 0.0001, pts[s + 1].x - 0.0001), y: loc.y };
+      let at = s + 1;
+      while (at < pts.length && pts[at].x < newPt.x) at++;
+      pts.splice(at, 0, newPt);
+      dragCurve.song = songIdx;
+      dragCurve.lane = activeLane;
+      dragCurve.pt = at;
+      $("waveDetail" + songIdx).style.cursor = "grabbing";
+      markDraw();
+      return;
+    }
+  }
+
+  // 3. Click on background: direct waveform slide / pan with continuous precision!
+  dragPan.active = true;
+  dragPan.song = songIdx;
+  dragPan.startX = e.clientX;
+  dragPan.initialStart = song.sel.start;
+  const cv = $("waveDetail" + songIdx);
+  if (cv) cv.style.cursor = "grabbing";
+}
+
+function moveCurveDrag(songIdx, e) {
+  if (dragPan.active && dragPan.song === songIdx) {
+    const song = songs[songIdx];
+    const cv = $("waveDetail" + songIdx);
+    const r = cv.getBoundingClientRect();
+    const dx = e.clientX - dragPan.startX;
+    const shiftSec = -(dx / r.width) * song.sel.len;
+    const minStart = -song.sel.len + 0.5;
+    const maxStart = song.duration - 0.5;
+    let desired = dragPan.initialStart + shiftSec;
+    if (magneticSnap && beatmatching && !e.shiftKey && song.beats.length) {
+      let closest = desired;
+      let minD = 0.22;
+      for (let k = 0; k < song.beats.length; k++) {
+        const tb = song.beats[k];
+        const isDown = ((k - (song.barOffset || 0)) % 4 + 4) % 4 === 0;
+        const thresh = isDown ? 0.25 : 0.12;
+        const dist = Math.abs(tb - desired);
+        if (dist < thresh && dist < minD) {
+          minD = dist;
+          closest = tb;
+        }
+      }
+      desired = closest;
+    }
+    song.sel.start = clamp(desired, minStart, maxStart);
+    updatePhaseIndicator();
+    markDraw();
+    return;
+  }
+
+  if (dragCurve.song !== songIdx || dragCurve.lane === null) return;
+  const song = songs[songIdx];
+  const pts = song.lanes[dragCurve.lane];
+  const p = dragCurve.pt;
+  if (p < 0 || p >= pts.length) return;
+
+  const loc = getCurveLoc(songIdx, e);
+
+  // 100% Free Y movement without any magnetic snapping
+  pts[p].y = loc.y;
+
+  // Intermediate points move 100% freely in X between their neighbors
+  if (p > 0 && p < pts.length - 1) {
+    const prevX = pts[p - 1].x;
+    const nextX = pts[p + 1].x;
+    pts[p].x = clamp(loc.x, prevX + 0.0001, nextX - 0.0001);
+  }
+  markDraw();
+}
+
+function endCurveDrag(songIdx) {
+  if (dragPan.active) {
+    dragPan.active = false;
+    dragPan.song = -1;
+    const cv = $("waveDetail" + songIdx);
+    if (cv) cv.style.cursor = "crosshair";
+    markDraw();
+    return;
+  }
+  if (dragCurve.song !== -1) {
+    const cv = $("waveDetail" + dragCurve.song);
+    if (cv) cv.style.cursor = "crosshair";
+  }
+  dragCurve.song = -1;
+  dragCurve.lane = null;
+  dragCurve.pt = -1;
+  markDraw();
+}
+
+function dblClickCurve(songIdx, e) {
+  if (activeLane === "all") return;
+  const song = songs[songIdx];
+  if (!song.buffer) return;
+  const pts = song.lanes[activeLane];
+  const loc = getCurveLoc(songIdx, e);
+  const Y = y => (1 - y) * (loc.H - 28) + 14;
+
+  // Double-click removes intermediate point (18px radius)
+  for (let p = 1; p < pts.length - 1; p++) {
+    const ptX = pts[p].x * loc.W;
+    const ptY = Y(pts[p].y);
+    if (Math.hypot(ptX - loc.px, ptY - loc.py) <= 18) {
+      pts.splice(p, 1);
+      hoverState.pt = -1;
+      markDraw();
+      return;
+    }
+  }
+}
+
+/* ------------------------------------------------------------
+   Curve Value Evaluation
+------------------------------------------------------------ */
+function laneValueAt(song, lane, xn) {
+  const pts = song.lanes[lane];
+  if (!pts || pts.length < 2) return 0.5;
+  if (xn <= pts[0].x) return pts[0].y;
+  for (let p = 0; p < pts.length - 1; p++) {
+    const a = pts[p], b = pts[p + 1];
+    if (xn >= a.x && xn <= b.x) {
+      const t = (b.x - a.x) > 0 ? (xn - a.x) / (b.x - a.x) : 0;
+      return lerp(a.y, b.y, t);
+    }
+  }
+  return pts[pts.length - 1].y;
+}
+
+// Volume: 0 = mute, 0.5 = unity (100%), 1.0 = +6 dB (Zero-threshold clamp at y <= 0.01 for dead silence)
+const laneYToVolume = y => (y <= 0.01 ? 0 : Math.min((y / 0.5) ** 2, 2.0));
+
+// EQ (Bass Isolator < 250 Hz): 0 = -48 dB (Total Kill), 0.5 = 0 dB (Flat), 1.0 = +6 dB (Boost)
+const laneYToEqDb = y => (y <= 0.5 ? (y - 0.5) * 2 * 48 : (y - 0.5) * 2 * 6);
+
+// Dual-filter DJ Sweep: 0 = Lowpass 80 Hz, 0.5 = Neutral (20 kHz open / 20 Hz bypass), 1.0 = Highpass 5 kHz
+function applyFilterToNodes(filtLP, filtHP, y) {
+  if (!filtLP || !filtHP) return;
+  if (y <= 0.5) {
+    // Lowpass sweep down to 80 Hz (muffled / underwater club effect)
+    filtHP.frequency.value = 20;
+    const t = y / 0.5; // 0 to 1
+    filtLP.frequency.value = Math.pow(10, lerp(Math.log10(80), Math.log10(20000), t));
+  } else {
+    // Highpass sweep up to 5000 Hz (airy, thinned-out build-up effect)
+    filtLP.frequency.value = 20000;
+    const t = (y - 0.5) / 0.5; // 0 to 1
+    filtHP.frequency.value = Math.pow(10, lerp(Math.log10(20), Math.log10(5000), t));
+  }
+}
+
+// Backward compatible alias
+function applyFilterParams(filt, y) {
+  if (!filt) return;
+  if (y <= 0.5) {
+    filt.type = "lowpass";
+    const t = y / 0.5;
+    filt.frequency.value = Math.pow(10, lerp(Math.log10(80), Math.log10(20000), t));
+  } else {
+    filt.type = "highpass";
+    const t = (y - 0.5) / 0.5;
+    filt.frequency.value = Math.pow(10, lerp(Math.log10(20), Math.log10(5000), t));
+  }
+}
+
+/* ------------------------------------------------------------
+   Spotify Automix: Presets & 5-Stage Decision Pipeline
+------------------------------------------------------------ */
+const SPOTIFY_PRESETS = {
+  fade: {
+    name: "Fade",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.45, y: 0.5 }, { x: 0.75, y: 0.25 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.0 }, { x: 0.35, y: 0.25 }, { x: 0.7, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.495, y: 0.5 }, { x: 0.505, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.495, y: 0.0 }, { x: 0.505, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  rise: {
+    name: "Rise",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.95, y: 0.5 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.95, y: 0.5 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.95, y: 0.0 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 0.65, y: 0.5 }, { x: 0.95, y: 0.8 }, { x: 1, y: 0.5 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.25 }, { x: 0.65, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  blend: {
+    name: "Blend",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.85, y: 0.5 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.0 }, { x: 0.15, y: 0.35 }, { x: 0.5, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.495, y: 0.5 }, { x: 0.505, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.495, y: 0.0 }, { x: 0.505, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  wave: {
+    name: "Wave",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.95, y: 0.5 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.495, y: 0.5 }, { x: 0.505, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.495, y: 0.0 }, { x: 0.505, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.95, y: 0.25 }, { x: 1, y: 0.25 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.25 }, { x: 0.5, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  melt: {
+    name: "Melt",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.95, y: 0.28 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.15 }, { x: 0.5, y: 0.45 }, { x: 0.8, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.495, y: 0.5 }, { x: 0.505, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.495, y: 0.0 }, { x: 0.505, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.95, y: 0.8 }, { x: 1, y: 0.5 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.35 }, { x: 0.5, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  slam: {
+    name: "Slam",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.499, y: 0.5 }, { x: 0.501, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.0 }, { x: 0.499, y: 0.0 }, { x: 0.501, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.499, y: 0.5 }, { x: 0.501, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.499, y: 0.0 }, { x: 0.501, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  dissolve: {
+    name: "Dissolve",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.85, y: 0.5 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.15 }, { x: 0.5, y: 0.35 }, { x: 0.85, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.84, y: 0.5 }, { x: 0.86, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.84, y: 0.0 }, { x: 0.86, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 0.6, y: 0.5 }, { x: 0.95, y: 0.38 }, { x: 1, y: 0.35 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.4 }, { x: 0.5, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  surge: {
+    name: "Surge",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.85, y: 0.5 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.0 }, { x: 0.5, y: 0.45 }, { x: 0.85, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.84, y: 0.5 }, { x: 0.86, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.84, y: 0.0 }, { x: 0.86, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.35 }, { x: 0.5, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  },
+  afterglow: {
+    name: "Afterglow",
+    apply: () => {
+      songs[0].lanes.volume = [{ x: 0, y: 0.5 }, { x: 0.6, y: 0.48 }, { x: 1, y: 0.15 }];
+      songs[1].lanes.volume = [{ x: 0, y: 0.0 }, { x: 0.4, y: 0.38 }, { x: 0.7, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.eq = [{ x: 0, y: 0.5 }, { x: 0.495, y: 0.5 }, { x: 0.505, y: 0.0 }, { x: 1, y: 0.0 }];
+      songs[1].lanes.eq = [{ x: 0, y: 0.0 }, { x: 0.495, y: 0.0 }, { x: 0.505, y: 0.5 }, { x: 1, y: 0.5 }];
+      songs[0].lanes.filter = [{ x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 1, y: 0.75 }];
+      songs[1].lanes.filter = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+    }
+  }
+};
+
+let selectedPreset = "auto";
+
+// Get vocal activity value at second t from song heatmap (0.0 to 1.0)
+function getSongVocalAtSec(song, sec) {
+  if (!song || !song.vocalHeatmap || !song.vocalHeatmap.length) return 0.2;
+  const idx = Math.floor(sec * 2); // 2 samples per second
+  if (idx < 0) return 0;
+  if (idx >= song.vocalHeatmap.length) return 0;
+  return song.vocalHeatmap[idx] || 0;
+}
+
+// Camelot Harmonic Wheel distance (0 = identical, 1 = adjacent / compatible, >= 3 = clash)
+function getCamelotDistance(key1, key2) {
+  if (!key1 || !key2) return 99;
+  const m1 = key1.match(/^([0-9]{1,2})([AB])/i);
+  const m2 = key2.match(/^([0-9]{1,2})([AB])/i);
+  if (!m1 || !m2) return 99;
+  const num1 = parseInt(m1[1], 10);
+  const letter1 = m1[2].toUpperCase();
+  const num2 = parseInt(m2[1], 10);
+  const letter2 = m2[2].toUpperCase();
+  let diff = Math.abs(num1 - num2);
+  if (diff > 6) diff = 12 - diff;
+  return (letter1 === letter2) ? diff : diff + 1;
+}
+
+// Stage 2 & 3: Multi-Bar Joint Seam Optimizer (Vocal Collision Avoidance + Phrase Alignment)
+function findOptimalAutomixSeam() {
+  if (!songs[0].buffer || !songs[1].buffer) return null;
+  const dur0 = songs[0].duration;
+  const beats0 = songs[0].beats || [];
+  const beats1 = songs[1].beats || [];
+  if (!beats0.length || !beats1.length) return null;
+
+  const barOff0 = songs[0].barOffset || 0;
+  const barOff1 = songs[1].barOffset || 0;
+  const bpm0 = songs[0].bpm || 128;
+  const bpm1 = songs[1].bpm || 120;
+  const avgBpm = (bpm0 + bpm1) / 2;
+
+  // Test 4 bars (16 beats), 8 bars (32 beats), and 16 bars (64 beats)
+  const barOptions = [4, 8, 16];
+  let overallBest = null;
+  let overallBestScore = -Infinity;
+
+  for (const bars of barOptions) {
+    const numBeats = bars * 4;
+    const transDur = (numBeats * 60) / avgBpm;
+
+    // 1. Candidate Downbeats for Song 0 (last 75s of track, landing before file end)
+    const minStart0 = Math.max(2, dur0 - 75);
+    const maxStart0 = Math.max(2, dur0 - transDur - 1.5);
+
+    const cand0 = [];
+    for (let k = 0; k < beats0.length; k++) {
+      const t = beats0[k];
+      if (t < minStart0) continue;
+      if (t > maxStart0) break;
+      const isDownbeat = ((k - barOff0) % 4 + 4) % 4 === 0;
+      if (isDownbeat) {
+        const barIdx = Math.floor((k - barOff0) / 4);
+        const isPhrase = (barIdx % bars === 0);
+        cand0.push({ t, k, barIdx, isPhrase });
+      }
+    }
+    if (!cand0.length) {
+      cand0.push({ t: Math.max(0, dur0 - transDur - 6), barIdx: 0, isPhrase: false });
+    }
+
+    // 2. Candidate Downbeats for Song 1 (first 45s of track)
+    const cand1 = [];
+    for (let k = 0; k < beats1.length; k++) {
+      const t = beats1[k];
+      if (t < 0.1) continue;
+      if (t > 45) break;
+      const isDownbeat = ((k - barOff1) % 4 + 4) % 4 === 0;
+      if (isDownbeat) {
+        const barIdx = Math.floor((k - barOff1) / 4);
+        const isPhrase = (barIdx % bars === 0);
+        cand1.push({ t, k, barIdx, isPhrase });
+      }
+    }
+    if (!cand1.length) {
+      cand1.push({ t: Math.min(10, Math.max(0, songs[1].duration - transDur)), barIdx: 0, isPhrase: false });
+    }
+
+    // 3. Joint evaluation for this bar count
+    for (const c0 of cand0) {
+      for (const c1 of cand1) {
+        // Calculate vocal collision across the transition:
+        let clash = 0;
+        const numSamples = 10;
+        for (let s = 0; s < numSamples; s++) {
+          const u = s / numSamples;
+          const v0 = getSongVocalAtSec(songs[0], c0.t + u * transDur);
+          const v1 = getSongVocalAtSec(songs[1], c1.t + u * transDur);
+          if (v0 > 0.32 && v1 > 0.32) {
+            clash += (v0 * v1);
+          }
+        }
+
+        // Outro landing: ideal is finishing 3 to 6 seconds before track end
+        const endGap = dur0 - (c0.t + transDur);
+        const outroBonus = Math.max(0, 32 - Math.abs(endGap - 4.2) * 4.5);
+
+        // Phrase alignment bonus (both downbeats are on exact bar phrases)
+        const phraseBonus = (c0.isPhrase ? 35 : 5) + (c1.isPhrase ? 35 : 5);
+
+        // Intro bonus: prefer starting Song 1 at first downbeat (0:00 to 0:04) before vocals begin
+        const introBonus = (c1.t < 3.5 ? 30 : (c1.t < 12.0 ? 15 : 5));
+
+        // Long blend bonus for electronic tracks when vocal clash is zero
+        const lengthBonus = (clash === 0) ? (bars === 16 ? 20 : (bars === 8 ? 15 : 5)) : 0;
+
+        const totalScore = phraseBonus + outroBonus + introBonus + lengthBonus - (clash * 200);
+
+        if (totalScore > overallBestScore) {
+          overallBestScore = totalScore;
+          overallBest = {
+            bars,
+            numBeats,
+            transDur,
+            start0: c0.t,
+            start1: c1.t,
+            clash: clash.toFixed(2),
+            endGap: endGap.toFixed(1)
+          };
+        }
+      }
+    }
+  }
+
+  if (overallBest) {
+    songs[0].sel.start = overallBest.start0;
+    songs[1].sel.start = overallBest.start1;
+  }
+  return overallBest;
+}
+
+// Stage 4: Spotify Auto Decision Tree (Intelligent Recipe & Duration Selection)
+function executeSpotifyAutoTransition() {
+  if (!songs[0].buffer || !songs[1].buffer) return;
+
+  const bpm1 = songs[0].bpm || 128;
+  const bpm2 = songs[1].bpm || 120;
+  const heavyBass0 = songs[0].hasHeavyBass || false;
+  const heavyBass1 = songs[1].hasHeavyBass || false;
+  const keyDist = getCamelotDistance(songs[0].key, songs[1].key);
+  const bpmDiff = Math.abs(bpm1 - bpm2) / Math.max(bpm1, bpm2);
+
+  // Step 1: Execute Multi-Bar Seam & Vocal Clash Optimizer
+  const seamResult = findOptimalAutomixSeam();
+  const chosenBars = seamResult ? seamResult.bars : (bpm1 >= 122 ? 16 : 8);
+
+  // Set musical phrase length & update floating pill
+  setPhraseLengthBeats(chosenBars * 4);
+  updatePhraseBarsPillText(chosenBars);
+
+  // Step 2: Choose Optimal Spotify Recipe
+  let recipe = "fade";
+  let reason = "";
+
+  if (bpmDiff > 0.15) {
+    // Large tempo mismatch (>15%): Instant downbeat switch
+    recipe = "slam";
+    reason = chosenBars + " Bars · Large Tempo Gap (" + Math.round(bpmDiff * 100) + "%) ➔ Instant Downbeat Drop Cut (Slam)";
+  } else if (keyDist >= 3 && !heavyBass0) {
+    // Harmonic key clash: Ambient filter wash dissolves Song 0
+    recipe = "melt";
+    reason = chosenBars + " Bars · Harmonic Clash (" + (songs[0].key || "?") + " ➔ " + (songs[1].key || "?") + ") ➔ Ambient Filter Wash (Melt)";
+  } else if (heavyBass0 && heavyBass1) {
+    // Both electronic tracks with heavy sub-bass (<250Hz): Center Bass Swap
+    recipe = "fade";
+    reason = chosenBars + " Bars · Sub-Bass Clashes Eliminated ➔ Midpoint Center Bass Swap (Fade)";
+  } else if (bpm1 >= 126 && bpm2 >= 126 && keyDist <= 1) {
+    // Peak energy club tracks: Crescendo Surge
+    recipe = "surge";
+    reason = chosenBars + " Bars · Harmonic Match (" + (songs[0].key || "") + ") ➔ Peak Crescendo Surge";
+  } else if (chosenBars === 16 && keyDist <= 1) {
+    // Extended clean groove
+    recipe = "blend";
+    reason = "16 Bars · Zero Vocal Collision ➔ Extended Harmonic Groove Blend";
+  } else {
+    recipe = "fade";
+    reason = chosenBars + " Bars · Vocal-Free Outro Seam ➔ Midpoint Bass Swap (Fade)";
+  }
+
+  if (SPOTIFY_PRESETS[recipe]) {
+    SPOTIFY_PRESETS[recipe].apply();
+  }
+
+  // Step 3 & 4: Phase-lock downbeats with microsecond accuracy
+  applySelectedStrategy();
+  if (beatmatching) alignBeats();
+
+  // Highlight ✨ Auto button
+  document.querySelectorAll(".preset-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.preset === "auto");
+  });
+
+  // Display Spotify AI Decision Banner
+  const banner = $("automixAiBanner");
+  const reasonSpan = $("automixAiReason");
+  if (banner && reasonSpan) {
+    const time0 = fmtTime(songs[0].sel.start);
+    const time1 = fmtTime(songs[1].sel.start);
+    reasonSpan.innerHTML = '<span class="tag">' + chosenBars + ' BARS</span> ' +
+      'Seam: <b>' + time0 + '</b> ➔ <b>' + time1 + '</b> · ' + reason;
+    banner.style.display = "flex";
+  }
+
+  markDraw();
+}
+
+function updatePhraseBarsPillText(bars) {
+  const pill = $("phraseBarsPill");
+  if (pill) {
+    pill.textContent = bars + " bars";
+  }
+}
+
+/* ------------------------------------------------------------
+   Audio Engine & Full Song Playback
+------------------------------------------------------------ */
+function ensureAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+
+/* Play full single song preview */
+function playFullTrack(i, startPos = 0) {
+  const song = songs[i];
+  if (!song.buffer) return;
+  ensureAudioCtx();
+
+  // If already playing this deck and no seek position explicitly provided, toggle pause
+  if (transport === "fullTrack" && fullTrack.i === i && arguments.length === 1) {
+    pauseFullTrack();
+    return;
+  }
+
+  stopPlayback();
+
+  startPos = clamp(startPos, 0, Math.max(0, song.duration - 0.1));
+
+  const src = audioCtx.createBufferSource();
+  src.buffer = song.buffer;
+  const gain = audioCtx.createGain();
+  gain.gain.value = 1.0;
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  src.onended = () => {
+    if (transport === "fullTrack" && fullTrack.i === i) {
+      const elapsed = audioCtx.currentTime - fullTrack.startedAt;
+      if (fullTrack.startPos + elapsed >= song.duration - 0.2) {
+        stopFullTrack();
+      }
+    }
+  };
+
+  src.start(audioCtx.currentTime, startPos);
+
+  fullTrack = {
+    i,
+    startedAt: audioCtx.currentTime,
+    startPos,
+    src,
+    gain
+  };
+  transport = "fullTrack";
+  updateTransport();
+  markDraw();
+}
+
+function pauseFullTrack() {
+  if (transport !== "fullTrack" || fullTrack.i === -1) return;
+  const elapsed = audioCtx.currentTime - fullTrack.startedAt;
+  const currentPos = fullTrack.startPos + elapsed;
+  if (fullTrack.src) {
+    try { fullTrack.src.stop(); } catch (_) {}
+    try { fullTrack.src.disconnect(); } catch (_) {}
+  }
+  fullTrack.pausedAt = currentPos;
+  fullTrack.src = null;
+  transport = "fullTrackPaused";
+  updateTransport();
+  markDraw();
+}
+
+function resumeFullTrack() {
+  if (transport !== "fullTrackPaused" || fullTrack.i === -1) return;
+  playFullTrack(fullTrack.i, fullTrack.pausedAt);
+}
+
+function stopFullTrack() {
+  if (fullTrack.src) {
+    try { fullTrack.src.stop(); } catch (_) {}
+    try { fullTrack.src.disconnect(); } catch (_) {}
+    try { fullTrack.gain.disconnect(); } catch (_) {}
+    fullTrack.src = null;
+    fullTrack.gain = null;
+  }
+  fullTrack.i = -1;
+  transport = "idle";
+  updateTransport();
+  markDraw();
+}
+
+/* Simultaneous Overlapping Blend Engine & Full Mix Mode */
+function buildDeckAudio(i, when, duration, rate, startOffset) {
+  const song = songs[i];
+  const gain   = audioCtx.createGain();
+  const eqLow  = audioCtx.createBiquadFilter(); eqLow.type = "lowshelf"; eqLow.frequency.value = 250;
+  const eqMid  = audioCtx.createBiquadFilter(); eqMid.type = "peaking";  eqMid.frequency.value = 1200; eqMid.Q.value = 0.8;
+  const eqHi   = audioCtx.createBiquadFilter(); eqHi.type = "highshelf"; eqHi.frequency.value = 3500;
+  const filtLP = audioCtx.createBiquadFilter(); filtLP.type = "lowpass"; filtLP.Q.value = 1.6;
+  const filtHP = audioCtx.createBiquadFilter(); filtHP.type = "highpass"; filtHP.Q.value = 1.6;
+
+  // Signal chain: gain -> 3-Band EQ (Low/Mid/Hi) -> Dual Filter (LP/HP) -> Output
+  gain.connect(eqLow);
+  eqLow.connect(eqMid);
+  eqMid.connect(eqHi);
+  eqHi.connect(filtLP);
+  filtLP.connect(filtHP);
+  filtHP.connect(audioCtx.destination);
+
+  // Initial parameter values at x=0
+  const initVol = laneYToVolume(laneValueAt(song, "volume", 0));
+  gain.gain.value = initVol;
+  const initEq = laneYToEqDb(laneValueAt(song, "eq", 0));
+  eqLow.gain.value = initEq;
+  eqMid.gain.value = 0;
+  eqHi.gain.value  = 0;
+  applyFilterToNodes(filtLP, filtHP, laneValueAt(song, "filter", 0));
+
+  let src = null;
+  const leadSilence = Math.max(0, -startOffset);
+  const actualStartOffset = Math.max(0, startOffset);
+
+  if (actualStartOffset < song.duration && duration > leadSilence) {
+    const playWhen = when + leadSilence;
+    const playContextTime = duration - leadSilence;
+    const bufferAvailable = song.duration - actualStartOffset;
+
+    if (isFinite(duration)) {
+      const bufferNeeded = playContextTime * rate;
+      const bufferToPlay = Math.min(bufferNeeded, bufferAvailable);
+      const actualContextTime = bufferToPlay / rate;
+      if (bufferToPlay > 0) {
+        src = audioCtx.createBufferSource();
+        src.buffer = song.buffer;
+        src.playbackRate.value = rate;
+        src.connect(gain);
+        src.start(playWhen, actualStartOffset, bufferToPlay);
+        src.stop(playWhen + actualContextTime);
+      }
+    } else {
+      // Full Mix mode (Deck 2): play naturally to end of buffer
+      if (bufferAvailable > 0) {
+        src = audioCtx.createBufferSource();
+        src.buffer = song.buffer;
+        src.playbackRate.value = rate;
+        src.connect(gain);
+        src.start(playWhen, actualStartOffset);
+      }
+    }
+  }
+
+  song.nodes = { src, gain, eqLow, eqMid, eqHi, filtLP, filtHP, startedAt: when, rate, duration, startOffset };
+}
+
+function startFullMix() {
+  if (!songs[0].buffer || !songs[1].buffer) return;
+  ensureAudioCtx();
+  stopNodes();
+  stopFullTrack();
+
+  const t0 = audioCtx.currentTime + 0.08;
+  const transDur = sharedDurationSec;
+
+  const leadIn = (leadInSec === "full") 
+    ? Math.max(0, songs[0].sel.start) 
+    : Math.max(0, Math.min(leadInSec, songs[0].sel.start));
+  const deck1StartTrackTime = songs[0].sel.start - leadIn;
+  const deck1TotalPlayDur = leadIn + transDur;
+
+  // Spotify Strategy Playback Rates
+  const bpm1 = (songs[0].buffer && songs[0].bpm) ? songs[0].bpm : 128;
+  const bpm2 = (songs[1].buffer && songs[1].bpm) ? songs[1].bpm : 120;
+  const strat = resolveSpotifyStrategy(bpm1, bpm2);
+  const rates = beatmatching ? getLiveRampingRates(strat.id, 0, bpm1, bpm2) : { r0: 1.0, r1: 1.0, curBPM: bpm1 };
+
+  // Deck 2 plays to the end of Song 2 (or through the transition window, whichever is longer)
+  const deck2PlayDur = Math.max(transDur, songs[1].duration - songs[1].sel.start);
+  const totalMixDur = leadIn + deck2PlayDur;
+
+  mixState = {
+    startedAt: t0,
+    pausedAtAudioTime: 0,
+    leadIn,
+    dur1: transDur,
+    transDur,
+    rate0: rates.r0,
+    rate2: rates.r1,
+    totalMixDur,
+    mode: "fullMix"
+  };
+
+  buildDeckAudio(0, t0, deck1TotalPlayDur, 1.0, deck1StartTrackTime);
+  buildDeckAudio(1, t0 + leadIn, Infinity, rates.r1, songs[1].sel.start);
+
+  transport = "fullMix";
+  updateTransport();
+  markDraw();
+}
+
+function startBlendOnly() {
+  if (!songs[0].buffer || !songs[1].buffer) return;
+  ensureAudioCtx();
+  stopNodes();
+  stopFullTrack();
+
+  const t0 = audioCtx.currentTime + 0.08;
+  const transDur = sharedDurationSec || songs[0].sel.len;
+  const bpm1 = (songs[0].buffer && songs[0].bpm) ? songs[0].bpm : 128;
+  const bpm2 = (songs[1].buffer && songs[1].bpm) ? songs[1].bpm : 120;
+  const strat = resolveSpotifyStrategy(bpm1, bpm2);
+  const rates = beatmatching ? getLiveRampingRates(strat.id, 0, bpm1, bpm2) : { r0: 1.0, r1: 1.0, curBPM: bpm1 };
+
+  mixState = {
+    startedAt: t0,
+    pausedAtAudioTime: 0,
+    leadIn: 0,
+    dur1: transDur,
+    transDur,
+    rate0: rates.r0,
+    rate2: rates.r1,
+    totalMixDur: transDur,
+    mode: "blend"
+  };
+
+  buildDeckAudio(0, t0, transDur, rates.r0, songs[0].sel.start);
+  buildDeckAudio(1, t0, transDur, rates.r1, songs[1].sel.start);
+
+  transport = "playing";
+  updateTransport();
+  markDraw();
+}
+
+function stopNodes() {
+  for (const song of songs) {
+    if (!song.nodes) continue;
+    if (song.nodes.src) {
+      try { song.nodes.src.stop(); } catch (_) {}
+      try { song.nodes.src.disconnect(); } catch (_) {}
+    }
+    for (const k of ["gain", "eqLow", "eqMid", "eqHi", "filtLP", "filtHP"]) {
+      try { if (song.nodes[k]) song.nodes[k].disconnect(); } catch (_) {}
+    }
+    song.nodes = null;
+  }
+}
+
+function stopPlayback() {
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  stopNodes();
+  stopFullTrack();
+  transport = "idle";
+  updateTransport();
+  markDraw();
+}
+
+// Drives live parameters directly along user-customized curves with instantaneous responsiveness
+function applySongParams(song, xn) {
+  if (!song.nodes) return;
+  const vol = laneYToVolume(laneValueAt(song, "volume", xn));
+  const bassDb = laneYToEqDb(laneValueAt(song, "eq", xn));
+  const filY = laneValueAt(song, "filter", xn);
+
+  song.nodes.gain.gain.value = vol;
+  song.nodes.eqLow.gain.value = bassDb;
+  song.nodes.eqMid.gain.value = 0;
+  song.nodes.eqHi.gain.value  = 0;
+  applyFilterToNodes(song.nodes.filtLP, song.nodes.filtHP, filY);
+}
+
+function updateAudioParams() {
+  const now = audioCtx.currentTime;
+  const strat = resolveSpotifyStrategy(songs[0].bpm, songs[1].bpm);
+
+  if (transport === "playing") {
+    // Blend only mode: both decks follow custom sculpted curves synchronized 1:1 with playhead progress u
+    const dur1 = songs[0].nodes ? songs[0].nodes.duration : 0;
+    const dur2 = songs[1].nodes ? songs[1].nodes.duration : 0;
+    const total = Math.max(dur1, dur2, mixState.transDur || sharedDurationSec);
+    const elapsed = songs[0].nodes ? now - songs[0].nodes.startedAt : 0;
+    const u = clamp(elapsed / (mixState.transDur || total), 0, 1);
+
+    if (songs[0].nodes) applySongParams(songs[0], u);
+    if (songs[1].nodes) applySongParams(songs[1], u);
+
+    if (beatmatching) {
+      const rates = getLiveRampingRates(strat.id, u, songs[0].bpm, songs[1].bpm);
+      if (songs[0].nodes && songs[0].nodes.src) songs[0].nodes.src.playbackRate.setValueAtTime(rates.r0, now);
+      if (songs[1].nodes && songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(rates.r1, now);
+    } else {
+      if (songs[0].nodes && songs[0].nodes.src) songs[0].nodes.src.playbackRate.setValueAtTime(1.0, now);
+      if (songs[1].nodes && songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(1.0, now);
+    }
+  } else if (transport === "fullMix") {
+    // Full mix mode: Lead-in -> Transition Blend -> Outro to Song 2 end
+    const elapsedTotal = now - mixState.startedAt;
+
+    if (elapsedTotal < mixState.leadIn) {
+      // 1. Pre-roll Lead-in: Song 1 is playing solo at normal 100% volume / flat 3-band EQ
+      if (songs[0].nodes) {
+        songs[0].nodes.gain.gain.value = 1.0;
+        songs[0].nodes.eqLow.gain.value = 0;
+        songs[0].nodes.eqMid.gain.value = 0;
+        songs[0].nodes.eqHi.gain.value = 0;
+        applyFilterToNodes(songs[0].nodes.filtLP, songs[0].nodes.filtHP, 0.5);
+        if (songs[0].nodes.src) songs[0].nodes.src.playbackRate.setValueAtTime(1.0, now);
+      }
+      // Deck 2 is explicitly MUTED during Song 1's lead-in
+      if (songs[1].nodes) {
+        songs[1].nodes.gain.gain.value = 0.0;
+      }
+    } else if (elapsedTotal < mixState.leadIn + mixState.transDur) {
+      // 2. In Transition: Both decks follow their custom sculpted curves at exact normalized progress u
+      const elapsedInTrans = elapsedTotal - mixState.leadIn;
+      const u = clamp(elapsedInTrans / mixState.transDur, 0, 1);
+
+      if (songs[0].nodes) applySongParams(songs[0], u);
+      if (songs[1].nodes) applySongParams(songs[1], u);
+
+      if (beatmatching) {
+        const rates = getLiveRampingRates(strat.id, u, songs[0].bpm, songs[1].bpm);
+        if (songs[0].nodes && songs[0].nodes.src) songs[0].nodes.src.playbackRate.setValueAtTime(rates.r0, now);
+        if (songs[1].nodes && songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(rates.r1, now);
+      } else {
+        if (songs[0].nodes && songs[0].nodes.src) songs[0].nodes.src.playbackRate.setValueAtTime(1.0, now);
+        if (songs[1].nodes && songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(1.0, now);
+      }
+    } else {
+      // 3. Post-roll Outro: Song 1 is strictly MUTED after the transition
+      if (songs[0].nodes) {
+        songs[0].nodes.gain.gain.value = 0.0;
+      }
+      // Song 2 is playing solo to the end at normal full level & flat EQ
+      if (songs[1].nodes) {
+        songs[1].nodes.gain.gain.value = 1.0;
+        songs[1].nodes.eqLow.gain.value = 0;
+        songs[1].nodes.eqMid.gain.value = 0;
+        songs[1].nodes.eqHi.gain.value = 0;
+        applyFilterToNodes(songs[1].nodes.filtLP, songs[1].nodes.filtHP, 0.5);
+
+        // Spotify Tempo Strategy Recovery:
+        // If Deck 2 was shifted, glide smoothly back to 1.0 over 2 bars (8 beats):
+        if (beatmatching && (strat.id === 2 || strat.id === 3 || strat.id === 0)) {
+          const postElapsed = elapsedTotal - (mixState.leadIn + mixState.transDur);
+          const rampSec = (60 / songs[1].bpm) * 8; // 2 bars
+          if (postElapsed < rampSec) {
+            const tGlide = postElapsed / rampSec;
+            const smoothT = tGlide * tGlide * (3 - 2 * tGlide);
+            const initialRate = (strat.id === 2)
+              ? ((songs[0].bpm + songs[1].bpm) / 2) / songs[1].bpm
+              : getEffectiveTempoRatio(songs[0].bpm, songs[1].bpm);
+            const liveRate = initialRate + (1.0 - initialRate) * smoothT;
+            if (songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(liveRate, now);
+          } else {
+            if (songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(1.0, now);
+          }
+        } else {
+          if (songs[1].nodes.src) songs[1].nodes.src.playbackRate.setValueAtTime(1.0, now);
+        }
+      }
+    }
+  }
+}
+
+function updateTransport() {
+  const ready = songs[0].buffer && songs[1].buffer;
+  const playMix = $("playFullMixBtn"), playBlend = $("playBlendBtn"), stop = $("stopBtn"), read = $("timeRead");
+
+  // Deck header Full Play and Cue buttons
+  for (let i = 0; i < 2; i++) {
+    const btn = $("playFullBtn" + i);
+    const hasSong = !!songs[i].buffer;
+    btn.disabled = !hasSong;
+    if ($("cueStartBtn" + i)) $("cueStartBtn" + i).disabled = !hasSong;
+    if ($("cueEndBtn" + i)) $("cueEndBtn" + i).disabled = !hasSong;
+    if (transport === "fullTrack" && fullTrack.i === i) {
+      btn.textContent = "⏸ Pause Full";
+      btn.classList.add("playing");
+    } else if (transport === "fullTrackPaused" && fullTrack.i === i) {
+      btn.textContent = "▶ Resume Full";
+      btn.classList.remove("playing");
+    } else {
+      btn.textContent = "▶ Play Full";
+      btn.classList.remove("playing");
+    }
+  }
+  if ($("swapSongsBtn")) {
+    $("swapSongsBtn").disabled = !songs[0].buffer && !songs[1].buffer;
+  }
+
+  const isFullTrack = transport === "fullTrack" || transport === "fullTrackPaused";
+  playMix.disabled = !ready && transport === "idle";
+  playBlend.disabled = !ready && transport === "idle";
+  stop.style.display = (transport === "idle") ? "none" : "inline-block";
+
+  playMix.textContent = transport === "fullMix" ? "⏸ Pause Mix" : transport === "fullMixPaused" ? "▶ Resume Mix" : "▶ Play Full Mix";
+  playBlend.textContent = transport === "playing" ? "⏸ Pause Blend" : transport === "paused" ? "▶ Resume Blend" : "▶ Blend Only";
+
+  if (isFullTrack) {
+    const s = songs[fullTrack.i];
+    const pos = getDeckPlayhead(fullTrack.i) || 0;
+    read.innerHTML = "Deck " + (fullTrack.i + 1) + " Full: <b>" + fmtTime(pos) + "</b> / " + fmtTime(s.duration) + " <i>(click overview to seek)</i>";
+  } else if (!ready) {
+    const missing = [!songs[0].buffer && "Deck 1", !songs[1].buffer && "Deck 2"].filter(Boolean);
+    read.textContent = "Load " + missing.join(" and ");
+  } else if (transport === "idle") {
+    read.innerHTML = "Ready — <b>" + sharedDurationSec.toFixed(1) + "s</b> transition blend · <i>Click 'Play Full Mix' or 'Blend Only'</i>";
+  }
+}
+
+/* ------------------------------------------------------------
+   Render Loop
+------------------------------------------------------------ */
+function renderLoop() {
+  requestAnimationFrame(renderLoop);
+  easeSelections();
+
+  if (transport === "fullMix") {
+    updateAudioParams();
+    const now = audioCtx.currentTime;
+    const elapsedTotal = now - mixState.startedAt;
+    const read = $("timeRead");
+
+    if (elapsedTotal < mixState.leadIn) {
+      const left = (mixState.leadIn - elapsedTotal).toFixed(1);
+      const pos1 = getDeckPlayhead(0) || 0;
+      read.innerHTML = "<b>Full Mix: Song 1 Lead-in (" + fmtTime(pos1) + ")</b> · <i>Transition in " + left + "s</i>";
+    } else if (elapsedTotal < mixState.leadIn + mixState.transDur) {
+      const inTrans = (elapsedTotal - mixState.leadIn).toFixed(1);
+      const u = clamp((elapsedTotal - mixState.leadIn) / mixState.transDur, 0, 1);
+      const strat = resolveSpotifyStrategy(songs[0].bpm, songs[1].bpm);
+      const rates = getLiveRampingRates(strat.id, u, songs[0].bpm, songs[1].bpm);
+      read.innerHTML = "<b>Full Mix: Blending</b> — <b>" + inTrans + "s</b> / " + mixState.transDur.toFixed(1) + "s · <i>Live Tempo: <b>" + rates.curBPM.toFixed(1) + " BPM</b> (" + strat.short + ")</i>";
+    } else {
+      const pos2 = getDeckPlayhead(1) || 0;
+      const total2 = songs[1].duration;
+      read.innerHTML = "<b>Full Mix: Song 2 Outro</b> — <b>" + fmtTime(pos2) + "</b> / " + fmtTime(total2) + " <i>(playing until end of song)</i>";
+    }
+
+    if (elapsedTotal >= mixState.totalMixDur) {
+      stopPlayback();
+    }
+    markDraw();
+  } else if (transport === "playing") {
+    updateAudioParams();
+    const dur1 = songs[0].nodes ? songs[0].nodes.duration : 0;
+    const dur2 = songs[1].nodes ? songs[1].nodes.duration : 0;
+    const total = Math.max(dur1, dur2);
+    const elapsed = songs[0].nodes ? audioCtx.currentTime - songs[0].nodes.startedAt : 0;
+    const u = total > 0 ? clamp(elapsed / total, 0, 1) : 0;
+    const strat = resolveSpotifyStrategy(songs[0].bpm, songs[1].bpm);
+    const rates = getLiveRampingRates(strat.id, u, songs[0].bpm, songs[1].bpm);
+
+    $("timeRead").innerHTML = "<b>Blend Only:</b> <b>" + elapsed.toFixed(1) + "s</b> / " + total.toFixed(1) + "s · <i>Live Tempo: <b>" + rates.curBPM.toFixed(1) + " BPM</b> (" + strat.short + ")</i>";
+    if (elapsed >= total) {
+      stopPlayback();
+    }
+    markDraw();
+  } else if (transport === "fullTrack") {
+    const pos = getDeckPlayhead(fullTrack.i);
+    const s = songs[fullTrack.i];
+    if (pos !== null) {
+      $("timeRead").innerHTML = "Deck " + (fullTrack.i + 1) + " Full: <b>" + fmtTime(pos) + "</b> / " + fmtTime(s.duration) + " <i>(click overview to seek)</i>";
+    }
+    markDraw();
+  }
+
+  if (needsDraw) {
+    needsDraw = false;
+    drawOverview(0);
+    drawDetail(0);
+    drawDetail(1);
+    drawOverview(1);
+  }
+}
+
+/* ------------------------------------------------------------
+   Native DSP Acceleration (FastAPI + SciPy STFT + Viterbi)
+------------------------------------------------------------ */
+let nativeDspOnline = false;
+
+function updateDspBadge(state, customText) {
+  const badge = $("dspBadge");
+  if (!badge) return;
+  const ind = badge.querySelector(".dsp-indicator");
+  const txt = badge.querySelector(".dsp-text");
+
+  badge.classList.remove("online", "offline", "analyzing");
+  if (state === "analyzing") {
+    badge.classList.add("analyzing");
+    if (txt) txt.textContent = customText || "ANALYZING AUDIO...";
+    badge.title = "Native DSP engine is running multi-band STFT & Ellis/Dixon Viterbi beat tracking...";
+  } else if (state === true) {
+    badge.classList.add("online");
+    if (txt) txt.textContent = customText || "⚡ NATIVE DSP: ONLINE (Viterbi + STFT)";
+    badge.title = "Connected to Python Native DSP Engine on http://127.0.0.1:8765\nFeatures: Multi-band STFT, Viterbi Dynamic Programming Beat Tracker, 0.01 BPM accuracy, Camelot key detection.\n(Click to test connection)";
+  } else {
+    badge.classList.add("offline");
+    if (txt) txt.textContent = customText || "⚪ LOCAL BROWSER DSP";
+    badge.title = "Native DSP Server offline — using in-browser Web Audio fallback.\nLaunch start_app.bat for Studio Viterbi Beat Tracking & 0.01 BPM accuracy.\n(Click to test connection)";
+  }
+}
+
+async function checkNativeDspHealth() {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch("http://127.0.0.1:8765/health", { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      nativeDspOnline = true;
+      updateDspBadge(true);
+      return;
+    }
+  } catch (e) {
+    // offline
+  }
+  nativeDspOnline = false;
+  updateDspBadge(false);
+}
+
+// Initial check and periodic heartbeat
+checkNativeDspHealth();
+setInterval(checkNativeDspHealth, 10000);
+
+/* ------------------------------------------------------------
+   File Loading & Song Decoding
+------------------------------------------------------------ */
+async function loadFile(i, file) {
+  if (transport !== "idle") stopPlayback();
+  const song = songs[i];
+  song.bpmLocked = false;
+  song.keyLocked = false;
+  song.detailCache = null;
+  try {
+    const arrayBuf = await file.arrayBuffer();
+    ensureAudioCtx();
+    const buffer = await audioCtx.decodeAudioData(arrayBuf);
+    song.buffer = buffer;
+    song.duration = buffer.duration;
+    song.name = file.name.replace(/\.[^.]+$/, "");
+
+    $("title" + i).textContent = song.name;
+    $("time" + i).textContent = fmtTime(buffer.duration);
+    $("empty" + i).style.display = "none";
+    $("playFullBtn" + i).disabled = false;
+
+    // Analyze BPM & Key: Try Native Studio DSP Engine first, then fallback to Web Audio
+    let nativeAnalyzed = false;
+    if (nativeDspOnline) {
+      updateDspBadge("analyzing", `ANALYZING DECK ${i + 1} (VITERBI)...`);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const resp = await fetch("http://127.0.0.1:8765/analyze", {
+          method: "POST",
+          body: formData
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && Array.isArray(data.beats) && data.beats.length > 0) {
+            song.beats = data.beats;
+            song.barOffset = typeof data.barOffset === "number" ? data.barOffset : 0;
+            song.confidence = typeof data.confidence === "number" ? data.confidence : 0.95;
+            song.bpm = data.bpm;
+            $("bpm" + i).value = String(data.bpm);
+            if (data.key) {
+              song.key = data.key;
+              $("key" + i).value = data.key;
+              const pill = $("camelotPill" + i);
+              if (pill) {
+                const match = data.key.match(/^([0-9]{1,2}[AB])/i);
+                pill.textContent = match ? match[1] : data.key;
+              }
+            }
+            if (Array.isArray(data.vocalHeatmap)) {
+              song.vocalHeatmap = data.vocalHeatmap;
+            }
+            song.hasHeavyBass = Boolean(data.hasHeavyBass);
+            updateDspBadge(true, `⚡ NATIVE DSP: ${data.bpm} BPM · ${data.key} (${data.analyzeTimeMs}ms)`);
+            setTimeout(() => { if (nativeDspOnline) updateDspBadge(true); }, 5000);
+            nativeAnalyzed = true;
+          }
+        }
+      } catch (err) {
+        console.warn("Native DSP analysis failed, falling back to Web Audio:", err);
+      }
+    }
+
+    if (!nativeAnalyzed) {
+      const det = detectBPM(buffer);
+      song.beats = det.beats;
+      song.barOffset = det.barOffset || 0;
+      song.confidence = det.confidence || 0.85;
+      song.bpm = det.bpm;
+      $("bpm" + i).value = String(Math.round(det.bpm));
+      const kd = detectKey(buffer);
+      if (kd) {
+        song.key = kd.display || kd.key;
+        $("key" + i).value = song.key;
+      }
+    }
+
+    // Set initial window & maintain Deck tempo scaling across selected Spotify strategy:
+    if (i === 0) {
+      song.sel.start = Math.max(0, song.duration - (sharedDurationSec || 16) - 10);
+    } else {
+      song.sel.start = Math.min(10, Math.max(0, song.duration - (sharedDurationSec || 16)));
+    }
+
+    computePeaks(song, $("waveOverview" + i).clientWidth);
+
+    applySelectedStrategy();
+
+    markDraw();
+    updateTransport();
+  } catch (err) {
+    console.error("Audio load error:", err);
+    $("empty" + i).querySelector("span").textContent = "Decoding failed — try another MP3";
+    $("empty" + i).style.display = "flex";
+  }
+}
+
+/* ------------------------------------------------------------
+   Event Handlers & User Interaction
+------------------------------------------------------------ */
+// Musical Phrase buttons (2 Bars, 4 Bars, 8 Bars)
+document.querySelectorAll(".phrase-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const beats = parseInt(btn.dataset.beats, 10);
+    if (beats) setPhraseLengthBeats(beats);
+  });
+});
+
+// Transition duration buttons: 2s, 4s, 8s, 12s, 16s
+document.querySelectorAll(".dur-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    activePhraseBeats = null;
+    document.querySelectorAll(".phrase-btn").forEach(b => b.classList.remove("active"));
+    setSharedTransitionDuration(parseFloat(btn.dataset.sec));
+  });
+});
+
+// Spotify Transition Presets Carousel
+document.querySelectorAll(".preset-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedPreset = btn.dataset.preset;
+
+    if (selectedPreset === "auto") {
+      executeSpotifyAutoTransition();
+    } else if (selectedPreset === "custom") {
+      // Keep current curves
+      markDraw();
+    } else if (SPOTIFY_PRESETS[selectedPreset]) {
+      SPOTIFY_PRESETS[selectedPreset].apply();
+      applySelectedStrategy();
+      markDraw();
+    }
+  });
+});
+
+// Floating Center Phrase Bars Pill (Cycles: 16 bars ➔ 8 bars ➔ 4 bars ➔ 2 bars)
+if ($("phraseBarsPill")) {
+  $("phraseBarsPill").addEventListener("click", () => {
+    const currentBeats = activePhraseBeats || 64; // default 16 bars
+    let nextBars = 16;
+    if (currentBeats === 64) nextBars = 8;
+    else if (currentBeats === 32) nextBars = 4;
+    else if (currentBeats === 16) nextBars = 2;
+    else nextBars = 16;
+
+    setPhraseLengthBeats(nextBars * 4);
+    updatePhraseBarsPillText(nextBars);
+  });
+}
+
+// Spotify Automix 4 Tempo Ramping Strategies
+document.querySelectorAll(".strategy-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".strategy-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedTempoStrategy = btn.dataset.strategy;
+    if (selectedTempoStrategy === "4") {
+      beatmatching = false;
+      if ($("beatmatchToggleBtn")) {
+        $("beatmatchToggleBtn").classList.remove("active");
+        $("beatmatchToggleBtn").innerHTML = "⚪ Beatmatching: OFF";
+      }
+    } else {
+      beatmatching = true;
+      if ($("beatmatchToggleBtn")) {
+        $("beatmatchToggleBtn").classList.add("active");
+        $("beatmatchToggleBtn").innerHTML = "🔘 Beatmatching: ON";
+      }
+    }
+    applySelectedStrategy();
+  });
+});
+
+// Center Seam Align Beats Button
+if ($("alignBeatsBtn")) {
+  $("alignBeatsBtn").addEventListener("click", alignBeats);
+}
+
+// Center Seam Nudge phase buttons (1 Bar back / forward)
+if ($("nudgeBackBtn")) {
+  $("nudgeBackBtn").addEventListener("click", () => nudgeBar(-1));
+}
+if ($("nudgeFwdBtn")) {
+  $("nudgeFwdBtn").addEventListener("click", () => nudgeBar(1));
+}
+
+// Magnetic Snap Toggle Button (Snap: Beat vs Free Move)
+if ($("snapToggleBtn")) {
+  $("snapToggleBtn").addEventListener("click", () => {
+    magneticSnap = !magneticSnap;
+    const btn = $("snapToggleBtn");
+    if (magneticSnap) {
+      btn.textContent = "🧲 Snap: Beat";
+      btn.classList.remove("snap-free");
+      btn.title = "Magnetic Beat Snapping: ON (Click to enable Free Move)";
+    } else {
+      btn.textContent = "🔓 Free Move";
+      btn.classList.add("snap-free");
+      btn.title = "Free Movement: Continuous sub-millisecond precision (Click for Snap: Beat)";
+    }
+  });
+}
+
+// Beatgrid Downbeat Shift & Micro-Nudge (±5ms)
+function nudgeBeatGrid(i, dtSec) {
+  const song = songs[i];
+  if (!song.buffer || !song.beats.length) return;
+  for (let k = 0; k < song.beats.length; k++) {
+    song.beats[k] = Math.round((song.beats[k] + dtSec) * 1000) / 1000;
+  }
+  updatePhaseIndicator();
+  markDraw();
+}
+
+for (let i = 0; i < 2; i++) {
+  if ($("shiftDownbeat" + i)) {
+    $("shiftDownbeat" + i).addEventListener("click", () => {
+      const song = songs[i];
+      if (!song.buffer || !song.beats.length) return;
+      song.barOffset = ((song.barOffset || 0) + 1) % 4;
+      updatePhaseIndicator();
+      markDraw();
+    });
+  }
+  if ($("nudgeGridBack" + i)) {
+    $("nudgeGridBack" + i).addEventListener("click", (e) => {
+      const dt = e.shiftKey ? -0.020 : -0.005;
+      nudgeBeatGrid(i, dt);
+    });
+  }
+  if ($("nudgeGridFwd" + i)) {
+    $("nudgeGridFwd" + i).addEventListener("click", (e) => {
+      const dt = e.shiftKey ? 0.020 : 0.005;
+      nudgeBeatGrid(i, dt);
+    });
+  }
+  if ($("snapPeak" + i)) {
+    $("snapPeak" + i).addEventListener("click", () => snapGridToNearestPeak(i));
+  }
+  if ($("halfBpm" + i)) {
+    $("halfBpm" + i).addEventListener("click", () => {
+      const b = Math.round((songs[i].bpm / 2) * 100) / 100;
+      applyManualBpm(i, b, true);
+    });
+  }
+  if ($("doubleBpm" + i)) {
+    $("doubleBpm" + i).addEventListener("click", () => {
+      const b = Math.round((songs[i].bpm * 2) * 100) / 100;
+      applyManualBpm(i, b, true);
+    });
+  }
+}
+
+// Beatmatching Toggle Button (ON / OFF)
+if ($("beatmatchToggleBtn")) {
+  $("beatmatchToggleBtn").addEventListener("click", () => {
+    beatmatching = !beatmatching;
+    $("beatmatchToggleBtn").classList.toggle("active", beatmatching);
+    $("beatmatchToggleBtn").innerHTML = beatmatching ? "🔘 Beatmatching: ON" : "⚪ Beatmatching: OFF";
+
+    applySelectedStrategy();
+  });
+}
+
+// Legacy Shape & Mix Buttons (if present in DOM)
+if ($("straightBtn")) {
+  $("straightBtn").addEventListener("click", () => {
+    const lane = activeLane === "all" ? "volume" : activeLane;
+    for (let i = 0; i < 2; i++) {
+      if (lane === "volume" || lane === "eq") {
+        songs[i].lanes[lane] = i === 0
+          ? [{ x: 0, y: 0.5 }, { x: 1, y: 0.0 }]
+          : [{ x: 0, y: 0.0 }, { x: 1, y: 0.5 }];
+      } else {
+        songs[i].lanes[lane] = i === 0
+          ? [{ x: 0, y: 0.5 }, { x: 1, y: 0.15 }]
+          : [{ x: 0, y: 0.15 }, { x: 1, y: 0.5 }];
+      }
+    }
+    markDraw();
+  });
+}
+
+if ($("flatBtn")) {
+  $("flatBtn").addEventListener("click", () => {
+    const lanesToFlatten = activeLane === "all" ? ["volume", "eq", "filter"] : [activeLane];
+    for (let i = 0; i < 2; i++) {
+      for (const lane of lanesToFlatten) {
+        songs[i].lanes[lane] = [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }];
+      }
+    }
+    markDraw();
+  });
+}
+
+// Lane selection buttons: Volume, EQ, Filter, Show All
+document.querySelectorAll(".lane-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".lane-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeLane = btn.dataset.lane;
+    $("laneDesc").textContent = LANE_INFO[activeLane] || "";
+    markDraw();
+  });
+});
+
+// Playback Speed locked to 1.0x Normal (no pitch/speed alteration)
+if ($("syncBpmCheck")) {
+  $("syncBpmCheck").addEventListener("change", e => {
+    bpmSync = e.target.checked;
+    updateTransport();
+  });
+}
+
+// BPM and Key Manual Input
+for (let i = 0; i < 2; i++) {
+  const bpmInput = $("bpm" + i);
+  const keyInput = $("key" + i);
+
+  // Live input while typing: updates beat grid, Bar 1 markers, tempo badge, and phase in real time
+  bpmInput.addEventListener("input", e => {
+    const valStr = e.target.value.trim();
+    if (!valStr) return;
+    const v = parseFloat(valStr);
+    if (isFinite(v) && v >= 30 && v <= 300) {
+      applyManualBpm(i, v, false);
+    }
+  });
+
+  // Commit on change (blur or Enter): sanitize and format value
+  bpmInput.addEventListener("change", e => {
+    let v = parseFloat(e.target.value);
+    if (!isFinite(v) || v < 30 || v > 300) {
+      v = songs[i].bpm || 128;
+    }
+    v = Math.round(v * 10) / 10;
+    applyManualBpm(i, v, true);
+  });
+
+  // Arrow keys to adjust BPM (+/- 1 BPM or +/- 0.1 BPM with Shift)
+  bpmInput.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const step = e.shiftKey ? 0.1 : 1.0;
+      const current = parseFloat(bpmInput.value) || songs[i].bpm || 128;
+      const next = (e.key === "ArrowUp") ? current + step : current - step;
+      const clamped = clamp(Math.round(next * 10) / 10, 30, 300);
+      applyManualBpm(i, clamped, true);
+    } else if (e.key === "Enter") {
+      bpmInput.blur();
+    } else if (e.key === "Escape") {
+      bpmInput.value = String(Math.round((songs[i].bpm || 128) * 10) / 10);
+      bpmInput.blur();
+    }
+  });
+
+  // Mouse wheel to nudge BPM when focused
+  bpmInput.addEventListener("wheel", e => {
+    if (document.activeElement === bpmInput) {
+      e.preventDefault();
+      const step = (e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? 0.1 : 1.0);
+      const current = parseFloat(bpmInput.value) || songs[i].bpm || 128;
+      const clamped = clamp(Math.round((current + step) * 10) / 10, 30, 300);
+      applyManualBpm(i, clamped, true);
+    }
+  }, { passive: false });
+
+  keyInput.addEventListener("input", e => {
+    songs[i].keyLocked = true;
+    songs[i].key = e.target.value;
+    updatePhaseIndicator();
+  });
+
+  bpmInput.addEventListener("focus", e => e.target.select());
+  keyInput.addEventListener("focus", e => e.target.select());
+}
+
+// Overview Waveform Dragging, Resizing & Scrub
+for (let i = 0; i < 2; i++) {
+  const cv = $("waveOverview" + i);
+  cv.addEventListener("pointerdown", e => {
+    cv.setPointerCapture(e.pointerId);
+    startSelDrag(i, e);
+  });
+  cv.addEventListener("pointermove", e => {
+    if (dragSel.active && dragSel.i === i) moveSelDrag(e);
+    else updateOverviewHover(i, e);
+  });
+  cv.addEventListener("pointerup", e => {
+    try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+    endSelDrag(e);
+    updateOverviewHover(i, e);
+  });
+  cv.addEventListener("pointercancel", endSelDrag);
+  cv.addEventListener("pointerleave", () => {
+    if (!dragSel.active && hoverOverview.i === i) {
+      hoverOverview = { i: -1, handle: null };
+      markDraw();
+    }
+  });
+}
+
+// Detail Waveform Curve Editing & Hover
+for (let i = 0; i < 2; i++) {
+  const cv = $("waveDetail" + i);
+
+  cv.addEventListener("pointermove", e => {
+    if (dragCurve.song === i || (dragPan.active && dragPan.song === i)) {
+      moveCurveDrag(i, e);
+    } else {
+      updateCurveHover(i, e);
+    }
+  });
+
+  cv.addEventListener("pointerdown", e => {
+    cv.setPointerCapture(e.pointerId);
+    startCurveDrag(i, e);
+  });
+
+  cv.addEventListener("pointerup", e => {
+    try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+    endCurveDrag(i);
+    updateCurveHover(i, e);
+  });
+
+  cv.addEventListener("pointercancel", () => endCurveDrag(i));
+
+  cv.addEventListener("pointerleave", () => {
+    if (dragCurve.song === -1 && !dragPan.active) {
+      hoverState.song = -1;
+      hoverState.pt = -1;
+      hoverState.isLine = false;
+      cv.style.cursor = "crosshair";
+      markDraw();
+    }
+  });
+
+  cv.addEventListener("dblclick", e => dblClickCurve(i, e));
+  cv.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    dblClickCurve(i, e);
+  });
+}
+
+// File loading & Play Full Buttons
+for (let i = 0; i < 2; i++) {
+  const wrap = $("wrapOverview" + i);
+  const head = $("head" + i);
+  const empty = $("empty" + i);
+  const fileInput = $("file" + i);
+  const loadBtn = $("loadBtn" + i);
+  const playFullBtn = $("playFullBtn" + i);
+
+  // Play full song toggle
+  playFullBtn.addEventListener("click", () => {
+    if (transport === "fullTrack" && fullTrack.i === i) {
+      pauseFullTrack();
+    } else if (transport === "fullTrackPaused" && fullTrack.i === i) {
+      resumeFullTrack();
+    } else {
+      playFullTrack(i, 0);
+    }
+  });
+
+  // Explicit Load buttons & empty state click
+  loadBtn.addEventListener("click", () => fileInput.click());
+  empty.addEventListener("click", () => fileInput.click());
+
+  // Comprehensive Drag & Drop onto all Deck elements:
+  // Overview canvas, Overview wrap, Detail canvas, Detail wrap, Header, and Empty overlay
+  const detailCv = $("waveDetail" + i);
+  const detailWrap = detailCv ? detailCv.parentElement : null;
+  const overviewCv = $("waveOverview" + i);
+  const deckTargets = [wrap, head, empty, detailCv, detailWrap, overviewCv].filter(Boolean);
+
+  const setHoverState = (isHover) => {
+    if (wrap) wrap.classList.toggle("drag-hover", isHover);
+    if (detailWrap) detailWrap.classList.toggle("drag-hover", isHover);
+  };
+
+  deckTargets.forEach(target => {
+    target.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+      setHoverState(true);
+    });
+
+    target.addEventListener("dragenter", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      setHoverState(true);
+    });
+
+    target.addEventListener("dragleave", e => {
+      e.preventDefault();
+      if (!e.relatedTarget || !deckTargets.some(t => t === e.relatedTarget || t.contains(e.relatedTarget))) {
+        setHoverState(false);
+      }
+    });
+
+    target.addEventListener("drop", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      setHoverState(false);
+
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+
+      if (files.length >= 2) {
+        // Multi-file drop: load file 0 to Deck 1, file 1 to Deck 2
+        loadFile(0, files[0]);
+        loadFile(1, files[1]);
+      } else {
+        loadFile(i, files[0]);
+      }
+    });
+  });
+
+  fileInput.addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) loadFile(i, f);
+    fileInput.value = "";
+  });
+}
+
+// Global Drag & Drop: Prevent browser from blocking drops or opening files as URLs
+window.addEventListener("dragover", e => {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+});
+window.addEventListener("dragenter", e => e.preventDefault());
+window.addEventListener("dragleave", e => e.preventDefault());
+window.addEventListener("drop", e => {
+  e.preventDefault();
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (!files || !files.length) return;
+
+  if (files.length >= 2) {
+    loadFile(0, files[0]);
+    loadFile(1, files[1]);
+  } else {
+    // If dropped anywhere outside specific decks, route to top or bottom deck based on cursor Y
+    const y = e.clientY;
+    const midY = window.innerHeight / 2;
+    if (y < midY) {
+      loadFile(0, files[0]);
+    } else {
+      loadFile(1, files[0]);
+    }
+  }
+});
+
+// Quick Cue Buttons: Jump transition section to Start or End of song
+for (let i = 0; i < 2; i++) {
+  if ($("cueStartBtn" + i)) {
+    $("cueStartBtn" + i).addEventListener("click", () => {
+      const song = songs[i];
+      if (!song.buffer) return;
+      song.sel.start = 0;
+      markDraw();
+    });
+  }
+  if ($("cueEndBtn" + i)) {
+    $("cueEndBtn" + i).addEventListener("click", () => {
+      const song = songs[i];
+      if (!song.buffer) return;
+      song.sel.start = Math.max(0, song.duration - song.sel.len);
+      markDraw();
+    });
+  }
+}
+
+// Swap Deck 1 and Deck 2
+if ($("swapSongsBtn")) {
+  $("swapSongsBtn").addEventListener("click", () => {
+    if (transport !== "idle") stopPlayback();
+    const temp = songs[0];
+    songs[0] = songs[1];
+    songs[1] = temp;
+
+    // Reset detail caches so waveforms re-render for their new deck colors and dimensions
+    songs[0].detailCache = null;
+    songs[1].detailCache = null;
+
+    // Recalculate selection lengths and downbeat alignment for the swapped relationship:
+    applySelectedStrategy();
+
+    for (let i = 0; i < 2; i++) {
+      const s = songs[i];
+      if (s.buffer) {
+        $("title" + i).textContent = s.name;
+        $("time" + i).textContent = fmtTime(s.duration);
+        $("empty" + i).style.display = "none";
+        $("bpm" + i).value = (s.bpm % 1 === 0) ? String(s.bpm) : String(Math.round(s.bpm * 10) / 10);
+        $("key" + i).value = s.key;
+        const pill = $("camelotPill" + i);
+        if (pill) {
+          const match = s.key.match(/^([0-9]{1,2}[AB])/i);
+          pill.textContent = match ? match[1] : (s.key || "—");
+        }
+      } else {
+        $("title" + i).textContent = "Song " + (i + 1) + " — Drop an MP3";
+        $("time" + i).textContent = "0:00";
+        $("empty" + i).style.display = "flex";
+        $("bpm" + i).value = "128";
+        $("key" + i).value = "—";
+      }
+    }
+    updateTransport();
+    markDraw();
+  });
+}
+
+// Lead-in duration selector: 0s (Together), 3s, 6s, 12s, Full
+document.querySelectorAll(".lead-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".lead-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const val = btn.dataset.sec;
+    leadInSec = val === "full" ? "full" : (val === "0" ? 0 : (parseInt(val, 10) || 0));
+    mixState.leadIn = (leadInSec === "full" && songs[0].buffer) ? songs[0].sel.start : leadInSec;
+    updateTransport();
+  });
+});
+
+// Play Full Mix Button (Lead-in -> Blend -> Outro to full song end)
+$("playFullMixBtn").addEventListener("click", () => {
+  if (transport === "idle" || transport === "fullTrack" || transport === "fullTrackPaused" || transport === "playing" || transport === "paused") {
+    startFullMix();
+  } else if (transport === "fullMix") {
+    audioCtx.suspend();
+    transport = "fullMixPaused";
+    mixState.pausedAtAudioTime = audioCtx.currentTime;
+    updateTransport();
+  } else if (transport === "fullMixPaused") {
+    audioCtx.resume();
+    transport = "fullMix";
+    updateTransport();
+  }
+});
+
+// Play Blend Only Button (Just the transition window)
+$("playBlendBtn").addEventListener("click", () => {
+  if (transport === "idle" || transport === "fullTrack" || transport === "fullTrackPaused" || transport === "fullMix" || transport === "fullMixPaused") {
+    startBlendOnly();
+  } else if (transport === "playing") {
+    audioCtx.suspend();
+    transport = "paused";
+    updateTransport();
+  } else if (transport === "paused") {
+    audioCtx.resume();
+    transport = "playing";
+    updateTransport();
+  }
+});
+
+$("stopBtn").addEventListener("click", stopPlayback);
+
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.code === "Space") {
+    e.preventDefault();
+    if (transport === "fullTrack") {
+      pauseFullTrack();
+    } else if (transport === "fullTrackPaused") {
+      resumeFullTrack();
+    } else if (transport === "fullMix" || transport === "fullMixPaused") {
+      $("playFullMixBtn").click();
+    } else if (transport === "playing" || transport === "paused") {
+      $("playBlendBtn").click();
+    } else {
+      $("playFullMixBtn").click();
+    }
+  }
+});
+
+// Resize redraw
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(markDraw, 100);
+});
+
+updateTransport();
+renderLoop();
+</script>
+</body>
+</html>
